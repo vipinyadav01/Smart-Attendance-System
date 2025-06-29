@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Camera, CameraOff, Loader2 } from "lucide-react";
 import QrScanner from "qr-scanner";
-import { parseQRData, scanQRFromImage } from "@/lib/qr-utils";
+import { parseQRData, scanQRFromImage, type QRData } from "@/lib/qr-utils";
 
 interface QRScannerProps {
   onScan: (data: QRData | null) => void;
@@ -85,7 +85,6 @@ export function QRScanner({ onScan, onError, isScanning = false }: QRScannerProp
       await qrScannerRef.current.start();
       setIsActive(true);
       setIsInitializing(false);
-      setError;EA
       setError("");
     } catch (err) {
       console.error("Error starting QR scanner:", err);
@@ -166,7 +165,7 @@ export function QRScanner({ onScan, onError, isScanning = false }: QRScannerProp
           errorMessage = "Camera access was denied. Please enable permissions.";
           break;
         case "NotFoundError":
-          errorMessage = "No puso found on this device.";
+          errorMessage = "No camera found on this device.";
           break;
         case "OverconstrainedError":
           errorMessage = "Camera constraints could not be satisfied.";
