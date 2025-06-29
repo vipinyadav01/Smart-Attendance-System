@@ -4,8 +4,8 @@ const withPWA = require('next-pwa')({
   skipWaiting: true,
 });
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+module.exports = withPWA({
+  reactStrictMode: true,
   experimental: {
     serverComponentsExternalPackages: ["cloudinary"],
   },
@@ -58,6 +58,4 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   transpilePackages: ["recharts"],
-}
-
-module.exports = withPWA(nextConfig);
+});

@@ -5,7 +5,7 @@ export default function Document() {
     <Html lang="en">
       <Head>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" href="/icons/icon-192x192.png" />
+        <link rel="icon" href="/favicon.ico" />
         <meta name="theme-color" content="#000000" />
       </Head>
       <body>
