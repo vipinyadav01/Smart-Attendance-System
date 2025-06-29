@@ -43,4 +43,6 @@ module.exports = withPWA({
     ignoreBuildErrors: true,
   },
   transpilePackages: ["recharts"],
+
+  
 });
