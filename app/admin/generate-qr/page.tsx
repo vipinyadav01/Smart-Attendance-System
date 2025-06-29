@@ -88,6 +88,8 @@ export default function GenerateQRPage() {
   }
 
   const getCurrentLocation = () => {
+    setLocationError("")
+    
     if (!navigator.geolocation) {
       setLocationError("Geolocation is not supported by this browser")
       return
@@ -95,19 +97,39 @@ export default function GenerateQRPage() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        console.log("Location obtained:", {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        })
+        
         setLocation({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         })
+        setLocationError("")
       },
       (error) => {
         console.error("Location error:", error)
-        setLocationError("Unable to get your location. Please enable location services.")
+        let errorMessage = "Unable to get your location. Please enable location services."
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location access was denied. Please enable location permissions and refresh the page."
+            break
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable. Please try again."
+            break
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out. Please try again."
+            break
+        }
+        
+        setLocationError(errorMessage)
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000,
+        timeout: 15000,
+        maximumAge: 300000, // 5 minutes
       },
     )
   }
@@ -122,6 +144,17 @@ export default function GenerateQRPage() {
       return
     }
 
+    // Validate selected class has location data
+    const selectedClassData = classes.find((c) => c.id === selectedClass)
+    if (!selectedClassData) {
+      toast({
+        title: "Error",
+        description: "Selected class not found",
+        variant: "destructive",
+      })
+      return
+    }
+
     setGenerating(true)
 
     try {
@@ -129,6 +162,23 @@ export default function GenerateQRPage() {
       if (!token) {
         throw new Error("Authentication required")
       }
+
+      // Ensure location coordinates are properly formatted as numbers
+      const locationData = {
+        latitude: Number(location.latitude),
+        longitude: Number(location.longitude),
+      }
+
+      // Validate location coordinates
+      if (isNaN(locationData.latitude) || isNaN(locationData.longitude)) {
+        throw new Error("Invalid location coordinates")
+      }
+
+      console.log("Generating QR code with data:", {
+        classId: selectedClass,
+        location: locationData,
+        className: selectedClassData.name,
+      })
 
       const response = await fetch("/api/qr/generate", {
         method: "POST",
@@ -138,27 +188,33 @@ export default function GenerateQRPage() {
         },
         body: JSON.stringify({
           classId: selectedClass,
-          location,
+          location: locationData,
         }),
       })
 
+      const data = await response.json()
+      
       if (!response.ok) {
-        throw new Error("Failed to generate QR code")
+        console.error("QR generation failed:", data)
+        throw new Error(data.error || `Failed to generate QR code (${response.status})`)
       }
 
-      const data = await response.json()
-      const selectedClassData = classes.find((c) => c.id === selectedClass)
+      console.log("QR generation response:", data)
+
+      if (!data.qrCode || !data.sessionId || !data.expiresAt) {
+        throw new Error("Invalid response from server - missing required data")
+      }
 
       setQrResult({
         qrCode: data.qrCode,
         sessionId: data.sessionId,
         expiresAt: new Date(data.expiresAt),
-        className: selectedClassData?.name || "Unknown Class",
+        className: selectedClassData.name || "Unknown Class",
       })
 
       toast({
         title: "Success",
-        description: "QR code generated successfully",
+        description: `QR code generated successfully for ${selectedClassData.name}`,
       })
     } catch (error: any) {
       console.error("QR generation error:", error)
@@ -256,7 +312,18 @@ export default function GenerateQRPage() {
               {locationError && (
                 <Alert className="bg-red-900/20 border-red-500/30">
                   <MapPin className="h-4 w-4 text-red-400" />
-                  <AlertDescription className="text-red-400">{locationError}</AlertDescription>
+                  <AlertDescription className="text-red-400">
+                    {locationError}
+                    <Button
+                      onClick={getCurrentLocation}
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 w-full bg-red-900/30 border-red-500/30 text-red-400 hover:bg-red-900/50"
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Retry Location
+                    </Button>
+                  </AlertDescription>
                 </Alert>
               )}
 
@@ -374,12 +441,25 @@ export default function GenerateQRPage() {
               {qrResult ? (
                 <div className="space-y-4 sm:space-y-6">
                   <div className="text-center">
-                    <img
-                      src={qrResult.qrCode || "/placeholder.svg"}
-                      alt="Attendance QR Code"
-                      className="mx-auto border border-gray-700 rounded-lg shadow-lg bg-white p-4"
-                      style={{ maxWidth: "280px", width: "100%" }}
-                    />
+                    {qrResult.qrCode ? (
+                      <img
+                        src={qrResult.qrCode}
+                        alt="Attendance QR Code"
+                        className="mx-auto border border-gray-700 rounded-lg shadow-lg bg-white p-4"
+                        style={{ maxWidth: "280px", width: "100%" }}
+                        onError={(e) => {
+                          console.error("QR code image failed to load")
+                          e.currentTarget.style.display = 'none'
+                        }}
+                      />
+                    ) : (
+                      <div className="mx-auto border border-gray-700 rounded-lg shadow-lg bg-gray-800 p-4 flex items-center justify-center" style={{ maxWidth: "280px", width: "100%", height: "280px" }}>
+                        <div className="text-center">
+                          <QrCode className="h-12 w-12 text-gray-500 mx-auto mb-2" />
+                          <p className="text-gray-500 text-sm">QR Code Loading...</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-3">

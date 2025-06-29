@@ -12,6 +12,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing classId or location data" }, { status: 400 });
     }
 
+    // Validate location coordinates are valid numbers
+    const lat = Number(location.latitude);
+    const lng = Number(location.longitude);
+    
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return NextResponse.json({ 
+        error: "Invalid location coordinates. Latitude must be between -90 and 90, longitude between -180 and 180" 
+      }, { status: 400 });
+    }
+
+    console.log("Input validation passed:", { classId, latitude: lat, longitude: lng });
+
     // Verify admin authentication
     const authHeader = request.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
@@ -39,12 +51,43 @@ export async function POST(request: NextRequest) {
     const sessionId = generateSessionId();
     const timestamp = Date.now();
 
+    // Ensure location has proper number types
     const qrData: QRData = {
       classId,
       sessionId,
       timestamp,
-      location,
+      location: {
+        latitude: Number(location.latitude),
+        longitude: Number(location.longitude),
+      },
     };
+
+    // Validate QR data before generating code
+    if (
+      !qrData.classId ||
+      !qrData.sessionId ||
+      !qrData.timestamp ||
+      !qrData.location ||
+      typeof qrData.location.latitude !== "number" ||
+      typeof qrData.location.longitude !== "number" ||
+      isNaN(qrData.location.latitude) ||
+      isNaN(qrData.location.longitude)
+    ) {
+      console.error("Invalid QR data before generation:", qrData);
+      return NextResponse.json({ error: "Invalid QR data format" }, { status: 400 });
+    }
+
+    console.log("Generated QR data:", qrData);
+    console.log("QR data validation:", {
+      hasClassId: !!qrData.classId,
+      hasSessionId: !!qrData.sessionId,
+      hasTimestamp: !!qrData.timestamp,
+      hasLocation: !!qrData.location,
+      latitudeType: typeof qrData.location.latitude,
+      longitudeType: typeof qrData.location.longitude,
+      latitudeValue: qrData.location.latitude,
+      longitudeValue: qrData.location.longitude,
+    });
 
     // Generate QR code image
     const qrCodeDataURL = await generateQRCode(qrData);
@@ -70,10 +113,16 @@ export async function POST(request: NextRequest) {
       sessionId,
       data: JSON.stringify(qrData),
       expiresAt: new Date(timestamp + 60 * 1000 + 30000), // 1 minute + 30 seconds
-      location,
+      location: {
+        latitude: qrData.location.latitude,
+        longitude: qrData.location.longitude,
+      },
       isActive: true,
       createdAt: new Date(),
     };
+
+    console.log("Storing QR code data:", qrCodeData);
+    console.log("QR data string to be stored:", qrCodeData.data);
 
     await adminDb.collection("qrcodes").doc(sessionId).set(qrCodeData);
 

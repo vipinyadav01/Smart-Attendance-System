@@ -9,7 +9,7 @@ import QrScanner from "qr-scanner";
 import { parseQRData, scanQRFromImage, type QRData } from "@/lib/qr-utils";
 
 interface QRScannerProps {
-  onScan: (data: QRData | null) => void;
+  onScan: (data: string) => void;
   onError: (error: string) => void;
   isScanning?: boolean;
 }
@@ -62,13 +62,9 @@ export function QRScanner({ onScan, onError, isScanning = false }: QRScannerProp
         video,
         (result) => {
           if (result && result.data) {
-            const parsedData = parseQRData(result.data);
-            if (parsedData) {
-              onScan(parsedData);
-              cleanup();
-            } else {
-              onError("Invalid QR Code data");
-            }
+            // Pass the raw QR data string to the parent component
+            onScan(result.data);
+            cleanup();
           }
         },
         {
@@ -194,12 +190,8 @@ export function QRScanner({ onScan, onError, isScanning = false }: QRScannerProp
       img.onload = async () => {
         const qrData = await scanQRFromImage(img);
         if (qrData) {
-          const parsedData = parseQRData(qrData);
-          if (parsedData) {
-            onScan(parsedData);
-          } else {
-            onError("Invalid QR code data");
-          }
+          // Pass the raw QR data string to the parent component
+          onScan(qrData);
         } else {
           onError("No QR code found in image");
         }

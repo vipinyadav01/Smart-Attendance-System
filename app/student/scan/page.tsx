@@ -73,7 +73,7 @@ export default function ScanPage() {
     );
   };
 
-  const handleScan = async (qrData: string) => {
+  const handleScan = async (qrDataString: string) => {
     if (!user || !location) {
       setResult({
         success: false,
@@ -86,26 +86,57 @@ export default function ScanPage() {
     setResult(null);
 
     try {
-      const parsedData = parseQRData(qrData);
-      console.log("Parsed QR data:", parsedData);
-      if (
-        !parsedData ||
-        !parsedData.classId ||
-        !parsedData.sessionId ||
-        !parsedData.timestamp ||
-        !parsedData.location
-      ) {
-        console.error("Invalid QR data:", qrData);
-        setResult({ success: false, message: "Invalid QR code format. Please scan a valid code." });
+      console.log("Received QR data string:", qrDataString);
+      
+      // Parse the QR data from the string
+      const qrData = parseQRData(qrDataString);
+      if (!qrData) {
+        console.error("Failed to parse QR data string:", qrDataString);
+        
+        // Provide more specific error messages based on the content
+        let errorMessage = "Invalid QR code format. Please scan a valid attendance QR code.";
+        
+        try {
+          const testParse = JSON.parse(qrDataString);
+          if (testParse && typeof testParse === 'object') {
+            errorMessage = "QR code is missing required attendance data. Please scan a valid attendance QR code.";
+          }
+        } catch {
+          errorMessage = "QR code does not contain valid JSON data. Please scan a valid attendance QR code.";
+        }
+        
+        setResult({ success: false, message: errorMessage });
         return;
       }
 
-      if (isQRCodeExpired(parsedData.timestamp)) {
+      console.log("Parsed QR data:", qrData);
+
+      // Validate the parsed data structure
+      if (
+        !qrData.classId ||
+        !qrData.sessionId ||
+        !qrData.timestamp ||
+        !qrData.location ||
+        typeof qrData.location.latitude !== "number" ||
+        typeof qrData.location.longitude !== "number"
+      ) {
+        console.error("Invalid QR data structure:", {
+          classId: qrData.classId,
+          sessionId: qrData.sessionId,
+          timestamp: qrData.timestamp,
+          location: qrData.location,
+          fullData: qrData
+        });
+        setResult({ success: false, message: "QR code is missing required attendance information. Please scan a valid attendance QR code." });
+        return;
+      }
+
+      if (isQRCodeExpired(qrData.timestamp)) {
         setResult({ success: false, message: "This QR code has expired. Please ask your instructor for a new one." });
         return;
       }
 
-      const classDoc = await getDoc(doc(db, "classes", parsedData.classId));
+      const classDoc = await getDoc(doc(db, "classes", qrData.classId));
       console.log("Class doc exists:", classDoc.exists(), "Data:", classDoc.data());
       if (!classDoc.exists()) {
         setResult({ success: false, message: "Class not found." });
@@ -121,13 +152,13 @@ export default function ScanPage() {
       const isInLocation = isWithinGeofence(
         location.latitude,
         location.longitude,
-        parsedData.location.latitude,
-        parsedData.location.longitude,
+        qrData.location.latitude,
+        qrData.location.longitude,
         classData.location.radius
       );
       console.log("Geofence check:", {
         userLocation: { lat: location.latitude, lon: location.longitude },
-        targetLocation: { lat: parsedData.location.latitude, lon: parsedData.location.longitude },
+        targetLocation: { lat: qrData.location.latitude, lon: qrData.location.longitude },
         radius: classData.location.radius,
         isInLocation,
       });
@@ -140,7 +171,7 @@ export default function ScanPage() {
       const existingAttendance = await getDocs(
         query(
           collection(db, "attendance"),
-          where("sessionId", "==", parsedData.sessionId),
+          where("sessionId", "==", qrData.sessionId),
           where("studentId", "==", user.id)
         )
       );
@@ -152,14 +183,14 @@ export default function ScanPage() {
       }
 
       const now = new Date();
-      const sessionStart = new Date(parsedData.timestamp);
+      const sessionStart = new Date(qrData.timestamp);
       const minutesLate = Math.floor((now.getTime() - sessionStart.getTime()) / 60000);
       const status = minutesLate > 15 ? "late" : "present";
 
       const attendanceRecord = {
-        sessionId: parsedData.sessionId,
+        sessionId: qrData.sessionId,
         studentId: user.id,
-        classId: parsedData.classId,
+        classId: qrData.classId,
         timestamp: now,
         status,
         location: {

@@ -45,7 +45,17 @@ export async function generateQRCode(data: QRData): Promise<string> {
 
 export function parseQRData(qrString: string): QRData | null {
   try {
-    const data = JSON.parse(qrString);
+    console.log("Attempting to parse QR string:", qrString);
+    
+    // Trim whitespace and check if it's empty
+    const trimmedString = qrString.trim();
+    if (!trimmedString) {
+      console.error("QR string is empty or only whitespace");
+      return null;
+    }
+
+    const data = JSON.parse(trimmedString);
+    console.log("Parsed JSON data:", data);
 
     // Validate QR data structure
     if (
@@ -56,13 +66,26 @@ export function parseQRData(qrString: string): QRData | null {
       typeof data.location.latitude !== "number" ||
       typeof data.location.longitude !== "number"
     ) {
-      console.error("Invalid QR data structure:", data);
+      console.error("Invalid QR data structure:", {
+        hasClassId: !!data.classId,
+        hasSessionId: !!data.sessionId,
+        hasTimestamp: !!data.timestamp,
+        hasLocation: !!data.location,
+        locationLatType: typeof data.location?.latitude,
+        locationLonType: typeof data.location?.longitude,
+        data
+      });
       return null;
     }
 
+    console.log("QR data validation passed");
     return data as QRData;
   } catch (error: any) {
-    console.error("Error parsing QR data:", error.message);
+    console.error("Error parsing QR data:", {
+      error: error.message,
+      qrString: qrString.substring(0, 100) + (qrString.length > 100 ? "..." : ""),
+      stack: error.stack
+    });
     return null;
   }
 }
