@@ -310,7 +310,7 @@ export default function AdminDashboard() {
             {/* Left Section - Title */}
             <div className="flex-1 min-w-0">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white truncate">
-                Admin Dashboard
+              QRollCall Admin 
               </h1>
               <p className="text-sm text-gray-400 mt-1 hidden sm:block">
                 Manage your university's attendance system

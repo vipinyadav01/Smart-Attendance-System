@@ -54,7 +54,7 @@ export default function HomePage() {
                 <QrCode className="relative h-8 w-8 sm:h-10 sm:w-10 text-cyan-400 mr-3" />
               </div>
               <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
-                AttendanceApp
+              QRollCall
               </h1>
             </div>
             <div className="flex gap-2 sm:gap-4">
@@ -385,7 +385,7 @@ export default function HomePage() {
           </div>
 
           <div className="border-t border-slate-800 mt-8 sm:mt-12 pt-8 text-center text-slate-400">
-            <p className="text-sm sm:text-base">&copy; 2024 AttendanceApp. All rights reserved.</p>
+            <p className="text-sm sm:text-base">&copy; 2024 QRollCall. All rights reserved.</p>
           </div>
         </div>
       </footer>
