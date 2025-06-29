@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
+
 import { adminAuth, adminDb } from "@/lib/firebase-admin"
-import { sendEmail } from "@/lib/email"
+import { sendApprovalNotification } from "@/lib/email"
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,41 +51,11 @@ export async function POST(request: NextRequest) {
 
     // Send email notification
     try {
-      if (approved) {
-        await sendEmail({
-          to: studentData.email,
-          subject: "Account Approved - Attendance System",
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #10b981;">Account Approved!</h2>
-              <p>Dear ${studentData.name},</p>
-              <p>Your account has been approved and you can now access the attendance system.</p>
-              <p>You can now:</p>
-              <ul>
-                <li>Scan QR codes to mark attendance</li>
-                <li>View your attendance history</li>
-                <li>Access your student dashboard</li>
-              </ul>
-              <p>Welcome to the attendance system!</p>
-              <p>Best regards,<br>The Attendance System Team</p>
-            </div>
-          `,
-        })
-      } else {
-        await sendEmail({
-          to: studentData.email,
-          subject: "Account Status Update - Attendance System",
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #ef4444;">Account Status Update</h2>
-              <p>Dear ${studentData.name},</p>
-              <p>We regret to inform you that your account application has not been approved at this time.</p>
-              <p>If you believe this is an error or would like to reapply, please contact your administrator.</p>
-              <p>Best regards,<br>The Attendance System Team</p>
-            </div>
-          `,
-        })
-      }
+      await sendApprovalNotification(
+        studentData.email, 
+        studentData.name, 
+        approved
+      )
     } catch (emailError) {
       console.error("Failed to send email notification:", emailError)
       // Don't fail the request if email fails
