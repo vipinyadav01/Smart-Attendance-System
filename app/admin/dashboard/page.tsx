@@ -153,9 +153,49 @@ export default function AdminDashboard() {
         ...doc.data(),
       })) as User[]
 
+      // Debug logging for pending approvals issue
+      console.log('Dashboard Debug Info:')
+      console.log('Admin university:', user.university)
+      console.log('Total students fetched:', students.length)
+      console.log('Fetched students:', students.map(s => ({
+        id: s.id,
+        name: s.name,
+        email: s.email,
+        role: s.role,
+        university: s.university,
+        isApproved: s.isApproved,
+        isApprovedType: typeof s.isApproved
+      })))
+
       const totalStudents = students.length
-      const approvedStudents = students.filter((s) => s.isApproved).length
-      const pendingStudents = students.filter((s) => !s.isApproved)
+      
+      // More robust filtering to handle different data types and missing fields
+      const approvedStudents = students.filter((s) => {
+        // Handle both boolean and string values
+        const approval = s.isApproved as any
+        return approval === true || approval === "true"
+      }).length
+      
+      const pendingStudents = students.filter((s) => {
+        // A student is pending if isApproved is false, "false", undefined, or null
+        const approval = s.isApproved as any
+        return approval === false || 
+               approval === "false" || 
+               approval === undefined || 
+               approval === null ||
+               (!approval && approval !== true && approval !== "true")
+      })
+
+      // Debug logging for filtered results
+      console.log('Approved students count:', approvedStudents)
+      console.log('Pending students:', pendingStudents.map(s => ({
+        id: s.id,
+        name: s.name,
+        email: s.email,
+        isApproved: s.isApproved,
+        isApprovedType: typeof s.isApproved
+      })))
+      console.log('Pending students count:', pendingStudents.length)
 
       // Fetch classes
       const classesQuery = query(collection(db, "classes"), where("universityId", "==", user.university))

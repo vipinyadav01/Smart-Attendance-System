@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Users, Search, CheckCircle, XCircle, Clock, Mail, MapPin, TrendingUp, RefreshCw, UserCheck, UserX, AlertTriangle, Calendar } from 'lucide-react'
+import { Users, Search, CheckCircle, XCircle, Clock, Mail, MapPin, TrendingUp, RefreshCw, UserCheck, UserX, AlertTriangle, Calendar, LogOut } from 'lucide-react'
 import { toast } from "@/hooks/use-toast"
 import type { User } from "@/lib/types"
 
@@ -25,7 +25,7 @@ interface StudentWithStats extends User {
 }
 
 export default function StudentsPage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, signOut } = useAuth()
   const router = useRouter()
   const [students, setStudents] = useState<StudentWithStats[]>([])
   const [filteredStudents, setFilteredStudents] = useState<StudentWithStats[]>([])
@@ -169,6 +169,20 @@ export default function StudentsPage() {
     await fetchStudents()
   }
 
+  const handleLogout = async () => {
+    try {
+      await signOut()
+      router.push("/auth/signin")
+    } catch (error) {
+      console.error("Error signing out:", error)
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
   const handleApproveStudent = async (studentId: string, approved: boolean) => {
     setActionLoading(studentId)
 
@@ -287,6 +301,15 @@ export default function StudentsPage() {
                 className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
               >
                 Back
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleLogout}
+                className="bg-red-600/20 border-red-600/30 text-red-400 hover:bg-red-600/30 hover:border-red-600/50 hover:text-red-300 transition-all duration-300"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Logout</span>
               </Button>
             </div>
           </div>

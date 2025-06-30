@@ -30,6 +30,7 @@ import {
   CheckCircle,
   AlertCircle,
   BarChart3,
+  LogOut,
 } from "lucide-react"
 
 interface Class {
@@ -57,7 +58,7 @@ interface AttendanceRecord {
 }
 
 export default function StudentDashboard() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, signOut } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -125,6 +126,20 @@ export default function StudentDashboard() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    try {
+      await signOut()
+      router.push("/auth/signin")
+    } catch (error) {
+      console.error("Error signing out:", error)
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -211,6 +226,19 @@ export default function StudentDashboard() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+        {/* Header with Logout */}
+        <div className="flex justify-end mb-4">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleLogout}
+            className="bg-red-600/20 border-red-600/30 text-red-400 hover:bg-red-600/30 hover:border-red-600/50 hover:text-red-300 transition-all duration-300"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline ml-2">Logout</span>
+          </Button>
+        </div>
+
         {/* Hero Section */}
         <div className="relative overflow-hidden rounded-2xl lg:rounded-3xl bg-gradient-to-br from-violet-600 via-cyan-600 to-emerald-600 text-white mb-4 sm:mb-6">
           <div className="absolute inset-0 bg-slate-900/30"></div>
