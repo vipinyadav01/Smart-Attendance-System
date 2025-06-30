@@ -15,7 +15,7 @@ import { useAuth } from "@/app/providers"
 import { db } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
 import { validateStudentId } from "@/lib/validations"
-import { Upload, Camera, User, Sparkles, CheckCircle, UserCircle } from "lucide-react"
+import { Upload, Camera, User, Sparkles, CheckCircle, UserCircle, Hash, School } from "lucide-react"
 
 export default function CompleteProfilePage() {
   const { user, firebaseUser, loading: authLoading, refreshUser } = useAuth()
@@ -23,6 +23,8 @@ export default function CompleteProfilePage() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [studentId, setStudentId] = useState("")
+  const [rollNumber, setRollNumber] = useState("")
+  const [university, setUniversity] = useState("")
   const [profilePhoto, setProfilePhoto] = useState("")
   const [useGooglePhoto, setUseGooglePhoto] = useState(true)
 
@@ -36,10 +38,23 @@ export default function CompleteProfilePage() {
       return
     }
 
-    // Redirect if profile is already complete
-    if (user?.profileComplete) {
-      router.push(user.role === "admin" ? "/admin/dashboard" : "/student/dashboard")
+    // Redirect if profile is already complete and has all required fields
+    if (user?.profileComplete && user?.university && user?.rollNumber && user?.studentId) {
+      if (user.role === "admin") {
+        router.push("/admin/dashboard")
+      } else if (user.isApproved) {
+        router.push("/student/dashboard")
+      } else {
+        router.push("/auth/pending-approval")
+      }
       return
+    }
+
+    // Set initial values from existing user data
+    if (user) {
+      setStudentId(user.studentId || "")
+      setRollNumber(user.rollNumber || "")
+      setUniversity(user.university || "")
     }
 
     // Set initial profile photo preference
@@ -56,7 +71,38 @@ export default function CompleteProfilePage() {
     setLoading(true)
 
     try {
-      // Validate student ID
+      // Validate required fields
+      if (!studentId.trim()) {
+        toast({
+          title: "Student ID Required",
+          description: "Please enter your student ID",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      if (!rollNumber.trim()) {
+        toast({
+          title: "Roll Number Required", 
+          description: "Please enter your roll number",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      if (!university.trim()) {
+        toast({
+          title: "University Required",
+          description: "Please enter your university name",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      // Validate student ID format
       const validation = validateStudentId(studentId)
       if (!validation.isValid) {
         toast({
@@ -74,6 +120,8 @@ export default function CompleteProfilePage() {
       // Update user document
       await updateDoc(doc(db, "users", firebaseUser.uid), {
         studentId: studentId.trim(),
+        rollNumber: rollNumber.trim(),
+        university: university.trim(),
         profilePhoto: finalProfilePhoto,
         profileComplete: true,
         updatedAt: new Date(),
@@ -84,12 +132,17 @@ export default function CompleteProfilePage() {
 
       toast({
         title: "Profile completed successfully!",
-        description: "You can now access the system.",
+        description: "Your profile is now complete and pending admin approval.",
       })
 
-      // Redirect based on role
-      const redirectPath = user?.role === "admin" ? "/admin/dashboard" : "/student/dashboard"
-      router.push(redirectPath)
+      // Redirect based on role and approval status
+      if (user?.role === "admin") {
+        router.push("/admin/dashboard")
+      } else if (user?.isApproved) {
+        router.push("/student/dashboard")
+      } else {
+        router.push("/auth/pending-approval")
+      }
     } catch (error) {
       console.error("Error completing profile:", error)
       toast({
@@ -259,6 +312,52 @@ export default function CompleteProfilePage() {
                       value={studentId}
                       onChange={(e) => setStudentId(e.target.value)}
                       placeholder="Enter your student ID (e.g., 2023001)"
+                      required
+                      disabled={loading}
+                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-14 text-lg px-4 transition-all duration-300 hover:bg-gray-800/70 group-focus-within:border-blue-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10 rounded-md pointer-events-none opacity-0 transition-opacity duration-300 group-focus-within:opacity-100"></div>
+                  </div>
+                </div>
+
+                {/* Roll Number Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <Hash className="w-5 h-5 text-blue-400" />
+                    <Label htmlFor="rollNumber" className="text-gray-300 text-lg font-semibold">
+                      Roll Number
+                    </Label>
+                  </div>
+                  <div className="relative group">
+                    <Input
+                      id="rollNumber"
+                      type="text"
+                      value={rollNumber}
+                      onChange={(e) => setRollNumber(e.target.value)}
+                      placeholder="Enter your roll number (e.g., 220310100001)"
+                      required
+                      disabled={loading}
+                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-14 text-lg px-4 transition-all duration-300 hover:bg-gray-800/70 group-focus-within:border-blue-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10 rounded-md pointer-events-none opacity-0 transition-opacity duration-300 group-focus-within:opacity-100"></div>
+                  </div>
+                </div>
+
+                {/* University Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <School className="w-5 h-5 text-blue-400" />
+                    <Label htmlFor="university" className="text-gray-300 text-lg font-semibold">
+                      University
+                    </Label>
+                  </div>
+                  <div className="relative group">
+                    <Input
+                      id="university"
+                      type="text"
+                      value={university}
+                      onChange={(e) => setUniversity(e.target.value)}
+                      placeholder="Enter your university name (e.g., GLA University)"
                       required
                       disabled={loading}
                       className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-14 text-lg px-4 transition-all duration-300 hover:bg-gray-800/70 group-focus-within:border-blue-500"

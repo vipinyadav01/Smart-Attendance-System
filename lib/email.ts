@@ -25,8 +25,8 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 
 // Email configuration
 const EMAIL_CONFIG = {
-  from: process.env.EMAIL_FROM || "Attendance System <noreply@yourdomain.com>",
-  domain: process.env.DOMAIN || "yourdomain.com"
+  from: process.env.EMAIL_FROM || "Attendance System <qrollcall@gmail.com>",
+  domain: process.env.DOMAIN || "Qrollcall.com"
 } as const
 
 // Modern email template utilities

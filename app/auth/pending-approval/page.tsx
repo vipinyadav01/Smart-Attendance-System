@@ -6,7 +6,9 @@ import { useAuth } from "@/app/providers"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Clock, Mail, CheckCircle, ArrowLeft, RefreshCw, LogOut, User } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Clock, Mail, CheckCircle, ArrowLeft, RefreshCw, LogOut, User, Shield, AlertCircle, HelpCircle, Settings, Calendar, MapPin, School, Sparkles, Timer, Hash } from "lucide-react"
 
 export default function PendingApprovalPage() {
   const { user, firebaseUser, loading: authLoading, signOut } = useAuth()
@@ -57,15 +59,15 @@ export default function PendingApprovalPage() {
   // Loading state while auth is loading
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-amber-950 to-slate-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-r from-black via-gray-900 to-black flex items-center justify-center p-4">
         <div className="text-center space-y-6">
           <div className="relative mx-auto w-20 h-20">
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 rounded-full blur-2xl opacity-60 animate-pulse"></div>
-            <div className="relative animate-spin rounded-full h-20 w-20 border-4 border-slate-800 border-t-amber-500 border-r-orange-500"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-orange-600 via-red-600 to-orange-600 rounded-full blur-2xl opacity-60 animate-pulse"></div>
+            <div className="relative animate-spin rounded-full h-20 w-20 border-4 border-gray-800 border-t-orange-500 border-r-red-500"></div>
           </div>
           <div className="space-y-2">
-            <p className="text-slate-300 text-lg font-medium">Checking authentication</p>
-            <p className="text-slate-500 text-sm">Please wait...</p>
+            <p className="text-white text-lg font-medium">Checking authentication</p>
+            <p className="text-gray-400 text-sm">Please wait...</p>
           </div>
         </div>
       </div>
@@ -75,15 +77,15 @@ export default function PendingApprovalPage() {
   // Loading state while user data is loading
   if (firebaseUser && !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-amber-950 to-slate-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-r from-black via-gray-900 to-black flex items-center justify-center p-4">
         <div className="text-center space-y-6">
           <div className="relative mx-auto w-20 h-20">
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 rounded-full blur-2xl opacity-60 animate-pulse"></div>
-            <div className="relative animate-spin rounded-full h-20 w-20 border-4 border-slate-800 border-t-amber-500 border-r-orange-500"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-orange-600 via-red-600 to-orange-600 rounded-full blur-2xl opacity-60 animate-pulse"></div>
+            <div className="relative animate-spin rounded-full h-20 w-20 border-4 border-gray-800 border-t-orange-500 border-r-red-500"></div>
           </div>
           <div className="space-y-2">
-            <p className="text-slate-300 text-lg font-medium">Loading your profile</p>
-            <p className="text-slate-500 text-sm">Getting latest approval status...</p>
+            <p className="text-white text-lg font-medium">Loading your profile</p>
+            <p className="text-gray-400 text-sm">Getting latest approval status...</p>
           </div>
         </div>
       </div>
@@ -94,161 +96,417 @@ export default function PendingApprovalPage() {
   const userEmail = user?.email || firebaseUser?.email || ""
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-amber-950 to-slate-950 text-white">
-      {/* Background Effects */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-amber-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-orange-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse animation-delay-4000"></div>
+    <div className="min-h-screen bg-gradient-to-r from-black via-gray-900 to-black text-white">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-black via-gray-900 to-black border-b border-gray-800 sticky top-0 z-50 backdrop-blur-lg">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-500 rounded-full blur-lg opacity-60"></div>
+                <div className="relative bg-gray-900 rounded-full p-2">
+                  <Timer className="w-6 h-6 text-orange-400" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-white">Approval Pending</h1>
+                <p className="text-sm text-gray-400 hidden sm:block">Waiting for administrator review</p>
+              </div>
+            </div>
+            <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 animate-pulse">
+              <Clock className="w-3 h-3 mr-1" />
+              Pending
+            </Badge>
+          </div>
+        </div>
       </div>
 
-      <div className="relative flex items-center justify-center min-h-screen px-3 sm:px-4 py-6 sm:py-8">
-        <Card className="w-full max-w-lg bg-slate-900/80 backdrop-blur-xl border-slate-700/50 shadow-2xl">
-          {/* Gradient Border Effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 rounded-lg opacity-20 blur-sm"></div>
-          <div className="relative bg-slate-900/90 rounded-lg">
-            <CardHeader className="text-center pb-6 pt-8">
-              <div className="flex items-center justify-center mb-6">
+      {/* Main Content - Bento Grid */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 lg:py-8">
+        {/* Mobile Layout (Small Screens) */}
+        <div className="lg:hidden space-y-4">
+          {/* Hero Card */}
+          <Card className="bg-gradient-to-br from-gray-900 to-black border-gray-800 hover:border-orange-500/30 transition-all duration-300 group">
+            <CardContent className="p-6">
+              <div className="flex flex-col items-center text-center space-y-4">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-amber-600 to-orange-600 rounded-full blur-xl opacity-60"></div>
-                  <div className="relative bg-slate-900 rounded-full p-4">
-                    <Clock className="w-10 h-10 text-amber-400" />
+                  <Avatar className="h-20 w-20 border-4 border-orange-500/30 shadow-2xl">
+                    <AvatarImage src={user?.profilePhoto || firebaseUser?.photoURL || "/placeholder.svg"} alt={userName} />
+                    <AvatarFallback className="text-2xl bg-gradient-to-br from-gray-800 to-black text-gray-300">
+                      {userName?.charAt(0)?.toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-orange-500 rounded-full border-2 border-black flex items-center justify-center">
+                    <Clock className="w-3 h-3 text-white" />
                   </div>
                 </div>
-              </div>
-              <div className="relative mb-4">
-                <CardTitle className="text-3xl font-bold bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
-                  Approval Pending
-                </CardTitle>
-              </div>
-              <CardDescription className="text-slate-400 text-base leading-relaxed">
-                Your account is waiting for administrator approval
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-6 px-8 pb-8">
-              <Alert className="bg-cyan-500/10 border-cyan-500/20 backdrop-blur-sm">
-                <Mail className="h-5 w-5 text-cyan-400" />
-                <AlertDescription className="text-cyan-200 text-base leading-relaxed">
-                  We've received your registration request. An administrator will review and approve your account shortly.
-                </AlertDescription>
-              </Alert>
-
-              <div className="space-y-6">
-                {/* Account Details */}
-                <div className="bg-slate-800/50 border border-slate-700 p-6 rounded-xl backdrop-blur-sm">
-                  <div className="flex items-center gap-3 mb-4">
-                    <User className="w-5 h-5 text-amber-400" />
-                    <h3 className="font-semibold text-white text-lg">Account Details</h3>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium text-slate-300 min-w-0 w-24">Name:</span>
-                      <span className="text-white truncate">{userName}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium text-slate-300 min-w-0 w-24">Email:</span>
-                      <span className="text-white truncate">{userEmail}</span>
-                    </div>
-                    {user?.rollNumber && (
-                      <div className="flex items-center gap-3">
-                        <span className="font-medium text-slate-300 min-w-0 w-24">Roll No:</span>
-                        <span className="text-white truncate">{user.rollNumber}</span>
-                      </div>
-                    )}
-                    {user?.studentId && (
-                      <div className="flex items-center gap-3">
-                        <span className="font-medium text-slate-300 min-w-0 w-24">Student ID:</span>
-                        <span className="text-white truncate">{user.studentId}</span>
-                      </div>
-                    )}
-                    {user?.university && (
-                      <div className="flex items-center gap-3">
-                        <span className="font-medium text-slate-300 min-w-0 w-24">University:</span>
-                        <span className="text-white truncate">{user.university}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium text-slate-300 min-w-0 w-24">Role:</span>
-                      <span className="text-white truncate capitalize">{user?.role || "Student"}</span>
-                    </div>
-                  </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">{userName}</h2>
+                  <p className="text-gray-400">{userEmail}</p>
                 </div>
-
-                {/* What happens next */}
-                <div className="bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-blue-500/10 border border-emerald-500/20 p-6 rounded-xl backdrop-blur-sm">
-                  <div className="flex items-start gap-4">
-                    <CheckCircle className="h-6 w-6 text-emerald-400 mt-0.5 flex-shrink-0" />
-                    <div className="min-w-0">
-                      <h4 className="font-semibold text-emerald-300 mb-3 text-lg">What happens next?</h4>
-                      <ul className="space-y-2 text-emerald-100">
-                        <li className="flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span>Administrator reviews your registration details</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span>You'll receive an email notification upon approval</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span>Once approved, you can access all system features</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span>This process typically takes 1-2 business days</span>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col space-y-3">
-                <Button 
-                  onClick={handleRefresh} 
-                  disabled={isRefreshing}
-                  className="w-full h-12 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-medium border-0 shadow-lg transition-all duration-300"
-                >
-                  {isRefreshing ? (
-                    <div className="flex items-center space-x-2">
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Checking Status...</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-2">
-                      <RefreshCw className="w-4 h-4" />
-                      <span>Check Approval Status</span>
-                    </div>
-                  )}
-                </Button>
-                
-                <Button 
-                  onClick={handleSignOut} 
-                  variant="outline"
-                  className="w-full h-12 border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-500 font-medium transition-all duration-300"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sign Out
-                </Button>
-              </div>
-
-              {/* Contact Support */}
-              <div className="text-center pt-4 border-t border-slate-700/50">
-                <p className="text-slate-400 text-sm mb-2">
-                  Need help or have questions?
-                </p>
-                <a 
-                  href="mailto:admin@yourdomain.com" 
-                  className="text-amber-400 hover:text-amber-300 transition-colors font-medium text-sm"
-                >
-                  Contact Administrator
-                </a>
+                <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+                  Awaiting Approval
+                </Badge>
               </div>
             </CardContent>
+          </Card>
+
+          {/* Status Alert */}
+          <Alert className="bg-blue-500/10 border-blue-500/20 backdrop-blur-sm">
+            <Mail className="h-5 w-5 text-blue-400" />
+            <AlertDescription className="text-blue-200">
+              We've received your registration request. An administrator will review and approve your account shortly.
+            </AlertDescription>
+          </Alert>
+
+          {/* Account Details */}
+          <Card className="bg-gradient-to-br from-gray-900 to-black border-gray-800">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-white flex items-center gap-2">
+                <User className="w-5 h-5 text-blue-400" />
+                Account Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 gap-3">
+                {user?.university && (
+                  <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <School className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-400">University</span>
+                    </div>
+                    <span className="text-white font-medium">{user.university}</span>
+                  </div>
+                )}
+                {user?.studentId && (
+                  <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-400">Student ID</span>
+                    </div>
+                    <span className="text-white font-medium">{user.studentId}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-400">Role</span>
+                  </div>
+                  <span className="text-white font-medium capitalize">{user?.role || "Student"}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Process Timeline */}
+          <Card className="bg-gradient-to-br from-gray-900 to-black border-gray-800">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-white flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-400" />
+                Process Timeline
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0 shadow-lg shadow-green-500/50"></div>
+                  <div>
+                    <p className="text-white font-medium text-sm">Registration Submitted</p>
+                    <p className="text-green-400 text-xs">Completed</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full flex-shrink-0 animate-pulse shadow-lg shadow-orange-500/50"></div>
+                  <div>
+                    <p className="text-white font-medium text-sm">Admin Review</p>
+                    <p className="text-orange-400 text-xs">In Progress</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-gray-500 rounded-full flex-shrink-0"></div>
+                  <div>
+                    <p className="text-gray-400 font-medium text-sm">Account Activation</p>
+                    <p className="text-gray-500 text-xs">Pending</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            <Button 
+              onClick={handleRefresh} 
+              disabled={isRefreshing}
+              className="w-full h-12 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-medium border-0 shadow-lg transition-all duration-300 group"
+            >
+              {isRefreshing ? (
+                <div className="flex items-center space-x-2">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Checking Status...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-300" />
+                  <span>Check Approval Status</span>
+                </div>
+              )}
+            </Button>
+            
+            <Button 
+              onClick={handleSignOut} 
+              variant="outline"
+              className="w-full h-12 border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-gray-500 font-medium transition-all duration-300"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
           </div>
-        </Card>
+
+          {/* Help & Support */}
+          <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <HelpCircle className="h-6 w-6 text-purple-400" />
+                  <div>
+                    <p className="text-white font-medium">Need Help?</p>
+                    <p className="text-purple-200 text-sm">Contact support</p>
+                  </div>
+                </div>
+                <Button 
+                  size="sm"
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={() => window.open("mailto:admin@yourdomain.com", "_blank")}
+                >
+                  <Mail className="w-3 h-3 mr-1" />
+                  Contact
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Large Screen Layout (Bento Grid) */}
+        <div className="hidden lg:grid lg:grid-cols-12 lg:grid-rows-6 gap-6 h-[calc(100vh-200px)]">
+          {/* Hero Section - Takes up large area */}
+          <Card className="col-span-5 row-span-4 bg-gradient-to-br from-gray-900 to-black border-gray-800 hover:border-orange-500/30 transition-all duration-300 group overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <CardContent className="p-8 h-full flex flex-col justify-center items-center text-center space-y-6 relative z-10">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-500 rounded-full blur-2xl opacity-60 animate-pulse"></div>
+                <Avatar className="relative h-32 w-32 border-4 border-orange-500/30 shadow-2xl">
+                  <AvatarImage src={user?.profilePhoto || firebaseUser?.photoURL || "/placeholder.svg"} alt={userName} />
+                  <AvatarFallback className="text-4xl bg-gradient-to-br from-gray-800 to-black text-gray-300">
+                    {userName?.charAt(0)?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-orange-500 rounded-full border-4 border-black flex items-center justify-center animate-pulse">
+                  <Clock className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div className="space-y-3">
+                <h2 className="text-3xl font-bold text-white">{userName}</h2>
+                <p className="text-gray-400 text-lg">{userEmail}</p>
+                <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 text-base px-4 py-2">
+                  <Timer className="w-4 h-4 mr-2" />
+                  Awaiting Approval
+                </Badge>
+              </div>
+              <div className="text-center space-y-2">
+                <p className="text-gray-300 text-lg">Welcome to QRollCall!</p>
+                <p className="text-gray-500">Your account is being reviewed by our administrators</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Status Alert */}
+          <Card className="col-span-7 row-span-2 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/20 hover:border-blue-500/40 transition-all duration-300">
+            <CardContent className="p-6 h-full flex items-center">
+              <div className="flex items-start space-x-4">
+                <div className="bg-blue-500/20 p-3 rounded-full">
+                  <Mail className="h-8 w-8 text-blue-400" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-xl font-semibold text-white">Registration Received</h3>
+                  <p className="text-blue-200 text-lg leading-relaxed">
+                    We've received your registration request. An administrator will review and approve your account shortly. 
+                    You'll receive an email notification once your account is approved.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Account Details */}
+          <Card className="col-span-4 row-span-4 bg-gradient-to-br from-gray-900 to-black border-gray-800 hover:border-blue-500/30 transition-all duration-300">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-white flex items-center gap-3 text-xl">
+                <User className="w-6 h-6 text-blue-400" />
+                Account Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                {user?.university && (
+                  <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl hover:bg-gray-800/70 transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <School className="w-5 h-5 text-gray-400 group-hover:text-blue-400 transition-colors" />
+                      <span className="text-gray-400">University</span>
+                    </div>
+                    <span className="text-white font-medium">{user.university}</span>
+                  </div>
+                )}
+                {user?.studentId && (
+                  <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl hover:bg-gray-800/70 transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <User className="w-5 h-5 text-gray-400 group-hover:text-blue-400 transition-colors" />
+                      <span className="text-gray-400">Student ID</span>
+                    </div>
+                    <span className="text-white font-medium">{user.studentId}</span>
+                  </div>
+                )}
+                {user?.rollNumber && (
+                  <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl hover:bg-gray-800/70 transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <Hash className="w-5 h-5 text-gray-400 group-hover:text-blue-400 transition-colors" />
+                      <span className="text-gray-400">Roll Number</span>
+                    </div>
+                    <span className="text-white font-medium">{user.rollNumber}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl hover:bg-gray-800/70 transition-colors group">
+                  <div className="flex items-center gap-3">
+                    <Shield className="w-5 h-5 text-gray-400 group-hover:text-blue-400 transition-colors" />
+                    <span className="text-gray-400">Role</span>
+                  </div>
+                  <span className="text-white font-medium capitalize">{user?.role || "Student"}</span>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl hover:bg-gray-800/70 transition-colors group">
+                  <div className="flex items-center gap-3">
+                    <Calendar className="w-5 h-5 text-gray-400 group-hover:text-blue-400 transition-colors" />
+                    <span className="text-gray-400">Joined</span>
+                  </div>
+                  <span className="text-white font-medium">
+                    {user?.createdAt ? 
+                      (user.createdAt instanceof Date ? 
+                        user.createdAt.toLocaleDateString() : 
+                        user.createdAt.toDate?.() ? 
+                          user.createdAt.toDate().toLocaleDateString() : 
+                          "Today"
+                      ) : 
+                      "Today"
+                    }
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Process Timeline */}
+          <Card className="col-span-3 row-span-4 bg-gradient-to-br from-gray-900 to-black border-gray-800 hover:border-green-500/30 transition-all duration-300">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-white flex items-center gap-3 text-xl">
+                <CheckCircle className="w-6 h-6 text-green-400" />
+                Process Timeline
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-6">
+                <div className="flex items-start gap-4 group">
+                  <div className="w-3 h-3 bg-green-500 rounded-full mt-2 flex-shrink-0 shadow-lg shadow-green-500/50"></div>
+                  <div>
+                    <h4 className="text-white font-medium">Registration Submitted</h4>
+                    <p className="text-green-400 text-sm">Completed</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4 group">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full mt-2 flex-shrink-0 animate-pulse shadow-lg shadow-orange-500/50"></div>
+                  <div>
+                    <h4 className="text-white font-medium">Admin Review</h4>
+                    <p className="text-orange-400 text-sm">In Progress</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4 group">
+                  <div className="w-3 h-3 bg-gray-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <h4 className="text-gray-400 font-medium">Email Notification</h4>
+                    <p className="text-gray-500 text-sm">Pending</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4 group">
+                  <div className="w-3 h-3 bg-gray-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <div>
+                    <h4 className="text-gray-400 font-medium">Account Activation</h4>
+                    <p className="text-gray-500 text-sm">Pending</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/20 p-4 rounded-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-green-400" />
+                  <span className="text-green-400 font-medium text-sm">Estimated Time</span>
+                </div>
+                <p className="text-green-300 text-sm">1-2 business days</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Action Buttons */}
+          <Card className="col-span-5 row-span-2 bg-gradient-to-br from-gray-900 to-black border-gray-800">
+            <CardContent className="p-6 h-full flex items-center space-x-4">
+              <Button 
+                onClick={handleRefresh} 
+                disabled={isRefreshing}
+                className="flex-1 h-14 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-medium border-0 shadow-lg transition-all duration-300 group text-lg"
+              >
+                {isRefreshing ? (
+                  <div className="flex items-center space-x-3">
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    <span>Checking Status...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-3">
+                    <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-300" />
+                    <span>Check Approval Status</span>
+                  </div>
+                )}
+              </Button>
+              
+              <Button 
+                onClick={handleSignOut} 
+                variant="outline"
+                className="flex-1 h-14 border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-gray-500 font-medium transition-all duration-300 text-lg"
+              >
+                <LogOut className="w-5 h-5 mr-3" />
+                Sign Out
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Help & Support */}
+          <Card className="col-span-7 row-span-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/20 hover:border-purple-500/40 transition-all duration-300">
+            <CardContent className="p-6 h-full flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="bg-purple-500/20 p-3 rounded-full">
+                  <HelpCircle className="h-8 w-8 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-white">Need Help?</h3>
+                  <p className="text-purple-200">Contact our support team for assistance</p>
+                </div>
+              </div>
+              <Button 
+                className="bg-purple-600 hover:bg-purple-700 text-white px-6"
+                onClick={() => window.open("mailto:admin@yourdomain.com", "_blank")}
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Contact Admin
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )

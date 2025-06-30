@@ -1,18 +1,18 @@
 import { Timestamp } from "firebase/firestore";
 
 export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: "student" | "admin";
-  university: string;
-  rollNumber?: string;
-  studentId?: string;
-  profilePhoto?: string;
-  isApproved: boolean;
-  profileComplete?: boolean;
-  createdAt: Timestamp | Date;
-  updatedAt: Timestamp | Date;
+  id: string
+  email: string
+  name: string
+  role: "student" | "admin"
+  university: string
+  rollNumber?: string
+  studentId?: string
+  profilePhoto?: string
+  isApproved: boolean
+  profileComplete?: boolean
+  createdAt: Timestamp | Date
+  updatedAt: Timestamp | Date
 }
 
 export interface AttendanceRecord {
