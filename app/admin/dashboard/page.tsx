@@ -44,7 +44,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "@/hooks/use-toast"
-import type { User, AttendanceRecord } from "@/lib/types"
+import type { User, AttendanceRecord, Class } from "@/lib/types"
 
 interface DashboardStats {
   totalStudents: number
@@ -130,16 +130,54 @@ export default function AdminDashboard() {
       const classesSnapshot = await getDocs(classesQuery)
       const totalClasses = classesSnapshot.size
 
-      // Fetch attendance records
-      const attendanceQuery = query(collection(db, "attendance"), orderBy("timestamp", "desc"), limit(500))
-      const attendanceSnapshot = await getDocs(attendanceQuery)
-      const attendanceRecords = attendanceSnapshot.docs.map((doc) => ({
+      // Fetch classes for this university to get class IDs
+      const classes = classesSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        timestamp: doc.data().timestamp?.toDate ? doc.data().timestamp.toDate() : new Date(doc.data().timestamp),
-      })) as AttendanceRecord[]
+      })) as Class[]
+      const classIds = classes.map(cls => cls.id)
 
-      // Calculate today's attendance
+      // Fetch attendance records for classes in this university only
+      let attendanceRecords: AttendanceRecord[] = []
+      if (classIds.length > 0) {
+        // Firestore 'in' query supports up to 10 items, so we need to batch if more classes
+        const batchSize = 10
+        const attendanceBatches = []
+        
+        for (let i = 0; i < classIds.length; i += batchSize) {
+          const batch = classIds.slice(i, i + batchSize)
+          const attendanceQuery = query(
+            collection(db, "attendance"), 
+            where("classId", "in", batch),
+            orderBy("timestamp", "desc"), 
+            limit(500)
+          )
+          attendanceBatches.push(getDocs(attendanceQuery))
+        }
+
+        const attendanceSnapshots = await Promise.all(attendanceBatches)
+        
+        attendanceRecords = attendanceSnapshots.flatMap(snapshot => 
+          snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            timestamp: doc.data().timestamp?.toDate ? doc.data().timestamp.toDate() : new Date(doc.data().timestamp),
+          })) as AttendanceRecord[]
+        )
+
+        // Sort by timestamp desc and limit to 500 most recent
+        attendanceRecords.sort((a, b) => {
+          const aTime = a.timestamp instanceof Timestamp ? a.timestamp.toDate() : new Date(a.timestamp)
+          const bTime = b.timestamp instanceof Timestamp ? b.timestamp.toDate() : new Date(b.timestamp)
+          return bTime.getTime() - aTime.getTime()
+        }).slice(0, 500)
+      }
+
+      // Create maps for quick lookup
+      const studentMap = new Map(students.map(s => [s.id, s]))
+      const classMap = new Map(classes.map(c => [c.id, c]))
+
+      // Calculate today's attendance (only for this university)
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const tomorrow = new Date(today)
@@ -147,7 +185,8 @@ export default function AdminDashboard() {
 
       const todayAttendance = attendanceRecords.filter((record) => {
         const recordDate = record.timestamp instanceof Timestamp ? record.timestamp.toDate() : new Date(record.timestamp)
-        return recordDate >= today && recordDate < tomorrow
+        const student = studentMap.get(record.studentId)
+        return recordDate >= today && recordDate < tomorrow && student && student.university === user.university
       }).length
 
       // Process attendance data for charts (last 7 days)
@@ -161,8 +200,11 @@ export default function AdminDashboard() {
         attendanceByDate[dateKey] = { present: 0, absent: 0, late: 0, total: 0 }
       }
 
-      // Fill with actual data
+      // Fill with actual data (only for students in this university)
       attendanceRecords.forEach((record) => {
+        const student = studentMap.get(record.studentId)
+        if (!student || student.university !== user.university) return
+        
         const recordDate = record.timestamp instanceof Timestamp ? record.timestamp.toDate() : new Date(record.timestamp)
         const dateKey = recordDate.toISOString().split("T")[0]
 
@@ -182,9 +224,14 @@ export default function AdminDashboard() {
         }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
-      // Calculate average attendance
-      const totalAttendanceRecords = attendanceRecords.length
-      const presentCount = attendanceRecords.filter(
+      // Calculate average attendance (only for this university)
+      const universityAttendanceRecords = attendanceRecords.filter(record => {
+        const student = studentMap.get(record.studentId)
+        return student && student.university === user.university
+      })
+      
+      const totalAttendanceRecords = universityAttendanceRecords.length
+      const presentCount = universityAttendanceRecords.filter(
         (record) => record.status === "present" || record.status === "late",
       ).length
       const averageAttendance =
@@ -193,17 +240,27 @@ export default function AdminDashboard() {
       // Generate recent activity
       const activity: RecentActivity[] = []
 
-      // Add recent attendance records
-      attendanceRecords.slice(0, 5).forEach((record) => {
-        activity.push({
-          id: record.id,
-          type: "attendance",
-          studentName: record.studentName || "Unknown Student",
-          studentPhoto: record.studentPhoto,
-          message: `Marked attendance for ${record.className || "Unknown Class"}`,
-          timestamp: record.timestamp instanceof Timestamp ? record.timestamp.toDate() : new Date(record.timestamp),
+      // Add recent attendance records (only for students in this university)
+      attendanceRecords
+        .filter(record => {
+          // Only include attendance for students in this university
+          const student = studentMap.get(record.studentId)
+          return student && student.university === user.university
         })
-      })
+        .slice(0, 8)
+        .forEach((record) => {
+          const student = studentMap.get(record.studentId)
+          const classInfo = classMap.get(record.classId)
+          
+          activity.push({
+            id: record.id,
+            type: "attendance",
+            studentName: student?.name || record.studentName || "Unknown Student",
+            studentPhoto: student?.profilePhoto || record.studentPhoto,
+            message: `Marked as ${record.status} for ${classInfo?.name || record.className || "Unknown Class"}`,
+            timestamp: record.timestamp instanceof Timestamp ? record.timestamp.toDate() : new Date(record.timestamp),
+          })
+        })
 
       // Add recent registrations
       students
