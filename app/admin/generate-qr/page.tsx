@@ -14,17 +14,17 @@ import { QrCode, MapPin, Clock, RefreshCw, Download, Share2 } from 'lucide-react
 import { toast } from "@/hooks/use-toast"
 
 interface ClassOption {
-  id: string
-  name: string
-  code: string
-  location?: {
-    name?: string
-    coordinates?: {
-      latitude: number
-      longitude: number
-    }
-    radius?: number
-  }
+  id: string;
+  name: string;
+  code: string;
+  location: {
+    name?: string;
+    coordinates: {
+      latitude: number;
+      longitude: number;
+    };
+    radius: number;
+  };
 }
 
 export default function GenerateQRPage() {
@@ -150,6 +150,22 @@ export default function GenerateQRPage() {
       toast({
         title: "Error",
         description: "Selected class not found",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate class has complete location data
+    if (
+      !selectedClassData.name ||
+      !selectedClassData.code ||
+      !selectedClassData.location?.radius ||
+      !selectedClassData.location?.coordinates?.latitude ||
+      !selectedClassData.location?.coordinates?.longitude
+    ) {
+      toast({
+        title: "Error",
+        description: "Selected class has incomplete location data. Please update class information.",
         variant: "destructive",
       })
       return

@@ -88,48 +88,16 @@ export default function ScanPage() {
     try {
       console.log("Received QR data string:", qrDataString);
       
-      // Parse the QR data from the string
       const qrData = parseQRData(qrDataString);
       if (!qrData) {
-        console.error("Failed to parse QR data string:", qrDataString);
-        
-        // Provide more specific error messages based on the content
-        let errorMessage = "Invalid QR code format. Please scan a valid attendance QR code.";
-        
-        try {
-          const testParse = JSON.parse(qrDataString);
-          if (testParse && typeof testParse === 'object') {
-            errorMessage = "QR code is missing required attendance data. Please scan a valid attendance QR code.";
-          }
-        } catch {
-          errorMessage = "QR code does not contain valid JSON data. Please scan a valid attendance QR code.";
-        }
-        
-        setResult({ success: false, message: errorMessage });
+        setResult({
+          success: false,
+          message: "Invalid QR code. Please ensure you're scanning the correct attendance QR code.",
+        });
         return;
       }
 
       console.log("Parsed QR data:", qrData);
-
-      // Validate the parsed data structure
-      if (
-        !qrData.classId ||
-        !qrData.sessionId ||
-        !qrData.timestamp ||
-        !qrData.location ||
-        typeof qrData.location.latitude !== "number" ||
-        typeof qrData.location.longitude !== "number"
-      ) {
-        console.error("Invalid QR data structure:", {
-          classId: qrData.classId,
-          sessionId: qrData.sessionId,
-          timestamp: qrData.timestamp,
-          location: qrData.location,
-          fullData: qrData
-        });
-        setResult({ success: false, message: "QR code is missing required attendance information. Please scan a valid attendance QR code." });
-        return;
-      }
 
       if (isQRCodeExpired(qrData.timestamp)) {
         setResult({ success: false, message: "This QR code has expired. Please ask your instructor for a new one." });
@@ -137,15 +105,22 @@ export default function ScanPage() {
       }
 
       const classDoc = await getDoc(doc(db, "classes", qrData.classId));
-      console.log("Class doc exists:", classDoc.exists(), "Data:", classDoc.data());
       if (!classDoc.exists()) {
         setResult({ success: false, message: "Class not found." });
         return;
       }
 
       const classData = classDoc.data();
-      if (!classData.location?.radius || !classData.name) {
-        setResult({ success: false, message: "Class data is incomplete. Please contact your instructor." });
+      console.log("QR data:", qrData);
+      console.log("Class data:", classData);
+
+      if (!classData.name) {
+        setResult({ success: false, message: "Class name is missing. Please contact your instructor." });
+        return;
+      }
+      
+      if (!classData.location?.radius || !classData.location?.coordinates) {
+        setResult({ success: false, message: "Class location data is incomplete. Please contact your instructor." });
         return;
       }
 
@@ -210,10 +185,10 @@ export default function ScanPage() {
         timestamp: now,
       });
     } catch (error: any) {
-      console.error("Attendance marking error:", error.message, error.stack);
+      console.error("Error processing QR code:", error);
       const errorMessage = error.code?.includes("unavailable")
-        ? "Network error. Please check your connection and try again."
-        : `An unexpected error occurred: ${error.message}`;
+        ? "Network error. Please check your internet connection and try again."
+        : `An error occurred: ${error.message}. Please try again or contact support.`;
       setResult({ success: false, message: errorMessage });
     } finally {
       setScanning(false);
