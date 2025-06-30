@@ -23,7 +23,7 @@ interface UserProfile {
 }
 
 export default function ProfileClient() {
-    const { user } = useAuth()
+    const { user, loading: authLoading } = useAuth()
     const router = useRouter()
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
     const [loading, setLoading] = useState(true)
@@ -33,6 +33,9 @@ export default function ProfileClient() {
 
     useEffect(() => {
         setMounted(true)
+
+        // Don't redirect while auth is still loading
+        if (authLoading) return
 
         if (!user) {
             router.push("/auth/signin")
@@ -57,7 +60,7 @@ export default function ProfileClient() {
         const interval = setInterval(updateTime, 1000)
 
         return () => clearInterval(interval)
-    }, [user, router])
+    }, [user, authLoading, router])
 
     const fetchUserProfile = async () => {
         if (!user) return

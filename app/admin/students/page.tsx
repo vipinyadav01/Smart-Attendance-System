@@ -25,7 +25,7 @@ interface StudentWithStats extends User {
 }
 
 export default function StudentsPage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const [students, setStudents] = useState<StudentWithStats[]>([])
   const [filteredStudents, setFilteredStudents] = useState<StudentWithStats[]>([])
@@ -37,6 +37,9 @@ export default function StudentsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   useEffect(() => {
+    // Don't redirect while auth is still loading
+    if (authLoading) return
+
     if (!user) {
       router.push("/auth/signin")
       return
@@ -48,7 +51,7 @@ export default function StudentsPage() {
     }
 
     fetchStudents()
-  }, [user, router])
+  }, [user, authLoading, router])
 
   useEffect(() => {
     // Filter students based on search term and status

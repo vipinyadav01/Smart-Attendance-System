@@ -73,7 +73,7 @@ interface RecentActivity {
 }
 
 export default function AdminDashboard() {
-  const { user, signOut } = useAuth()
+  const { user, loading: authLoading, signOut } = useAuth()
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats>({
     totalStudents: 0,
@@ -90,6 +90,9 @@ export default function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
+    // Don't redirect while auth is still loading
+    if (authLoading) return
+
     if (!user) {
       router.push("/auth/signin")
       return
@@ -101,7 +104,7 @@ export default function AdminDashboard() {
     }
 
     fetchDashboardData()
-  }, [user, router])
+  }, [user, authLoading, router])
 
   const fetchDashboardData = async () => {
     if (!user) return
@@ -346,7 +349,7 @@ export default function AdminDashboard() {
     },
   ].filter((item) => item.value > 0)
 
-  if (!user || loading) {
+  if (authLoading || loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="relative">

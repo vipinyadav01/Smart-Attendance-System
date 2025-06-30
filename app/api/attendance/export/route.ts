@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { adminDb, adminAuth } from "@/lib/firebase-admin"
 import { uploadPDF } from "@/lib/cloudinary"
+import { Timestamp } from "firebase-admin/firestore"
+import type { User } from "@/lib/types"
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,10 +35,12 @@ export async function POST(request: NextRequest) {
     let query = adminDb.collection("attendance").where("classId", "==", classId).orderBy("timestamp", "desc")
 
     if (startDate) {
-      query = query.where("timestamp", ">=", new Date(startDate))
+      const startTimestamp = Timestamp.fromDate(new Date(startDate))
+      query = query.where("timestamp", ">=", startTimestamp)
     }
     if (endDate) {
-      query = query.where("timestamp", "<=", new Date(endDate))
+      const endTimestamp = Timestamp.fromDate(new Date(endDate))
+      query = query.where("timestamp", "<=", endTimestamp)
     }
 
     const attendanceSnapshot = await query.get()
@@ -46,36 +50,60 @@ export async function POST(request: NextRequest) {
     const studentsData = await Promise.all(
       studentIds.map(async (id) => {
         const studentDoc = await adminDb.collection("users").doc(id).get()
-        return { id, ...studentDoc.data() }
+        if (studentDoc.exists) {
+          return { id, ...studentDoc.data() } as User & { id: string }
+        }
+        return null
       }),
     )
 
-    const studentsMap = new Map(studentsData.map((student) => [student.id, student]))
+    const studentsMap = new Map(
+      studentsData
+        .filter((student): student is User & { id: string } => student !== null)
+        .map((student) => [student.id, student])
+    )
 
     // Prepare CSV data
     const csvData = attendanceSnapshot.docs.map((doc) => {
       const data = doc.data()
       const student = studentsMap.get(data.studentId)
 
+      // Handle timestamp conversion safely
+      let date = "N/A"
+      let time = "N/A"
+      try {
+        if (data.timestamp) {
+          const timestampDate = data.timestamp.toDate ? data.timestamp.toDate() : new Date(data.timestamp)
+          date = timestampDate.toLocaleDateString()
+          time = timestampDate.toLocaleTimeString()
+        }
+      } catch (error) {
+        console.error("Error converting timestamp:", error)
+      }
+
       return {
-        studentName: student?.name || "Unknown",
-        rollNumber: student?.rollNumber || "N/A",
-        date: new Date(data.timestamp.toDate()).toLocaleDateString(),
-        time: new Date(data.timestamp.toDate()).toLocaleTimeString(),
-        status: data.status,
-        sessionId: data.sessionId,
+        studentName: student?.name || "Unknown Student",
+        rollNumber: student?.rollNumber || student?.studentId || "N/A",
+        email: student?.email || "N/A",
+        date,
+        time,
+        status: data.status || "absent",
+        sessionId: data.sessionId || "N/A",
+        deviceInfo: data.deviceInfo || "N/A",
       }
     })
 
     // Create CSV content manually (without csv-writer)
-    const csvHeaders = ["Student Name", "Roll Number", "Date", "Time", "Status", "Session ID"]
+    const csvHeaders = ["Student Name", "Roll Number", "Email", "Date", "Time", "Status", "Session ID", "Device Info"]
     const csvRows = csvData.map((row) => [
       `"${row.studentName}"`,
       `"${row.rollNumber}"`,
+      `"${row.email}"`,
       `"${row.date}"`,
       `"${row.time}"`,
       `"${row.status}"`,
       `"${row.sessionId}"`,
+      `"${row.deviceInfo}"`,
     ])
 
     const csvContent = [csvHeaders.join(","), ...csvRows.map((row) => row.join(","))].join("\n")
@@ -84,13 +112,23 @@ export async function POST(request: NextRequest) {
     const csvBuffer = Buffer.from(csvContent, "utf-8")
 
     // Upload to Cloudinary
-    const filename = `attendance-${classData?.name || classId}-${new Date().toISOString().split("T")[0]}`
+    const className = classData?.name || "Unknown Class"
+    const safeClassName = className.replace(/[^a-zA-Z0-9-_]/g, "-") // Replace special chars with hyphens
+    const dateStr = new Date().toISOString().split("T")[0]
+    const filename = `attendance-${safeClassName}-${dateStr}`
     const downloadUrl = await uploadPDF(csvBuffer, filename)
 
     return NextResponse.json({
       success: true,
       downloadUrl,
       recordCount: csvData.length,
+      className: classData?.name || "Unknown Class",
+      dateRange: {
+        start: startDate || "All time",
+        end: endDate || "All time"
+      },
+      exportedAt: new Date().toISOString(),
+      filename: `${filename}.csv`
     })
   } catch (error) {
     console.error("Error exporting attendance:", error)

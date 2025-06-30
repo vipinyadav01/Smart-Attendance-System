@@ -38,7 +38,7 @@ interface ReportStats {
 }
 
 export default function ReportsPage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const [classes, setClasses] = useState<ClassOption[]>([])
   const [filters, setFilters] = useState<ReportFilters>({
@@ -57,6 +57,9 @@ export default function ReportsPage() {
   })
 
   useEffect(() => {
+    // Don't redirect while auth is still loading
+    if (authLoading) return
+
     if (!user) {
       router.push("/auth/signin")
       return
@@ -68,7 +71,7 @@ export default function ReportsPage() {
     }
 
     fetchClasses()
-  }, [user, router])
+  }, [user, authLoading, router])
 
   useEffect(() => {
     if (filters.classId) {

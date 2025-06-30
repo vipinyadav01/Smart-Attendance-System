@@ -28,7 +28,7 @@ interface ClassOption {
 }
 
 export default function GenerateQRPage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const [classes, setClasses] = useState<ClassOption[]>([])
   const [selectedClass, setSelectedClass] = useState<string>("")
@@ -47,6 +47,9 @@ export default function GenerateQRPage() {
   const [locationError, setLocationError] = useState("")
 
   useEffect(() => {
+    // Don't redirect while auth is still loading
+    if (authLoading) return
+
     if (!user) {
       router.push("/auth/signin")
       return
@@ -59,7 +62,7 @@ export default function GenerateQRPage() {
 
     fetchClasses()
     getCurrentLocation()
-  }, [user, router])
+  }, [user, authLoading, router])
 
   const fetchClasses = async () => {
     if (!user) return
