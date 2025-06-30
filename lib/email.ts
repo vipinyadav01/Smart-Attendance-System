@@ -293,6 +293,15 @@ export async function sendApprovalNotification(
   studentName: string, 
   isApproved: boolean
 ): Promise<EmailResponse> {
+  console.log(`[EMAIL_DEBUG] sendApprovalNotification called with:`, {
+    to,
+    studentName,
+    isApproved,
+    hasResend: !!resend,
+    apiKey: process.env.RESEND_API_KEY ? "SET" : "NOT_SET",
+    fromEmail: EMAIL_CONFIG.from
+  })
+
   if (!resend) {
     const message = "Resend API key not configured. Email notification skipped."
     console.warn(`[EMAIL_WARNING] ${message}`)

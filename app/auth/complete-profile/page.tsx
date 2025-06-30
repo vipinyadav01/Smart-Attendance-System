@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { doc, updateDoc } from "firebase/firestore"
+import { doc, updateDoc, collection, query, where, getDocs, orderBy, limit } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,7 +14,7 @@ import { ImageUpload } from "@/components/image-upload"
 import { useAuth } from "@/app/providers"
 import { db } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
-import { validateStudentId } from "@/lib/validations"
+// Remove validateStudentId import as we're not validating student ID format anymore
 import { Upload, Camera, User, Sparkles, CheckCircle, UserCircle, Hash, School } from "lucide-react"
 
 export default function CompleteProfilePage() {
@@ -25,8 +25,53 @@ export default function CompleteProfilePage() {
   const [studentId, setStudentId] = useState("")
   const [rollNumber, setRollNumber] = useState("")
   const [university, setUniversity] = useState("")
+  const [generatingId, setGeneratingId] = useState(false)
   const [profilePhoto, setProfilePhoto] = useState("")
   const [useGooglePhoto, setUseGooglePhoto] = useState(true)
+
+  // Auto-generate student ID based on name and registration order
+  const generateStudentId = async () => {
+    if (!user?.name || !user?.university) return
+    
+    setGeneratingId(true)
+    try {
+      // Get count of existing students from same university
+      const studentsQuery = query(
+        collection(db, "users"),
+        where("role", "==", "student"),
+        where("university", "==", user.university),
+        orderBy("createdAt", "asc")
+      )
+      const studentsSnapshot = await getDocs(studentsQuery)
+      const studentCount = studentsSnapshot.size + 1
+      
+      // Generate ID: First 3 letters of name + student number (padded to 3 digits)
+      const namePrefix = user.name
+        .replace(/[^a-zA-Z]/g, '')
+        .toUpperCase()
+        .substring(0, 3)
+        .padEnd(3, 'X')
+      
+      const studentNumber = studentCount.toString().padStart(3, '0')
+      const generatedId = `${namePrefix}${studentNumber}`
+      
+      setStudentId(generatedId)
+      
+      toast({
+        title: "Student ID Generated",
+        description: `Your student ID: ${generatedId}`,
+      })
+    } catch (error) {
+      console.error("Error generating student ID:", error)
+      toast({
+        title: "Generation Failed",
+        description: "Could not auto-generate Student ID. Please enter manually.",
+        variant: "destructive",
+      })
+    } finally {
+      setGeneratingId(false)
+    }
+  }
 
   useEffect(() => {
     // Wait for auth to complete loading
@@ -55,6 +100,11 @@ export default function CompleteProfilePage() {
       setStudentId(user.studentId || "")
       setRollNumber(user.rollNumber || "")
       setUniversity(user.university || "")
+      
+      // Auto-generate student ID if not present
+      if (!user.studentId) {
+        generateStudentId()
+      }
     }
 
     // Set initial profile photo preference
@@ -75,7 +125,7 @@ export default function CompleteProfilePage() {
       if (!studentId.trim()) {
         toast({
           title: "Student ID Required",
-          description: "Please enter your student ID",
+          description: "Please enter your student ID or click 'Generate ID'",
           variant: "destructive",
         })
         setLoading(false)
@@ -102,12 +152,30 @@ export default function CompleteProfilePage() {
         return
       }
 
-      // Validate student ID format
-      const validation = validateStudentId(studentId)
-      if (!validation.isValid) {
+      // Check if roll number is unique (roll number should be unique)
+      try {
+        const rollNumberQuery = query(
+          collection(db, "users"),
+          where("rollNumber", "==", rollNumber.trim()),
+          where("university", "==", university.trim())
+        )
+        const rollNumberSnapshot = await getDocs(rollNumberQuery)
+        
+        // If roll number exists and it's not the current user
+        if (!rollNumberSnapshot.empty && rollNumberSnapshot.docs[0].id !== firebaseUser.uid) {
+          toast({
+            title: "Roll Number Already Exists",
+            description: "This roll number is already registered. Please check and try again.",
+            variant: "destructive",
+          })
+          setLoading(false)
+          return
+        }
+      } catch (error) {
+        console.error("Error checking roll number uniqueness:", error)
         toast({
-          title: "Invalid Student ID",
-          description: validation.error,
+          title: "Validation Error",
+          description: "Could not validate roll number. Please try again.",
           variant: "destructive",
         })
         setLoading(false)
@@ -299,11 +367,30 @@ export default function CompleteProfilePage() {
 
                 {/* Student ID Section */}
                 <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <User className="w-5 h-5 text-blue-400" />
-                    <Label htmlFor="studentId" className="text-gray-300 text-lg font-semibold">
-                      Student ID
-                    </Label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <User className="w-5 h-5 text-blue-400" />
+                      <Label htmlFor="studentId" className="text-gray-300 text-lg font-semibold">
+                        Student ID
+                      </Label>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={generateStudentId}
+                      disabled={loading || generatingId || !user?.name || !user?.university}
+                      className="border-blue-500 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
+                    >
+                      {generatingId ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-spin rounded-full h-3 w-3 border border-blue-400 border-t-transparent"></div>
+                          <span className="text-xs">Generating...</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs">Generate ID</span>
+                      )}
+                    </Button>
                   </div>
                   <div className="relative group">
                     <Input
@@ -311,13 +398,16 @@ export default function CompleteProfilePage() {
                       type="text"
                       value={studentId}
                       onChange={(e) => setStudentId(e.target.value)}
-                      placeholder="Enter your student ID (e.g., 2023001)"
+                      placeholder="Auto-generated or enter manually (e.g., VIP001)"
                       required
-                      disabled={loading}
+                      disabled={loading || generatingId}
                       className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-14 text-lg px-4 transition-all duration-300 hover:bg-gray-800/70 group-focus-within:border-blue-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10 rounded-md pointer-events-none opacity-0 transition-opacity duration-300 group-focus-within:opacity-100"></div>
                   </div>
+                  <p className="text-xs text-gray-400">
+                    Student ID will be auto-generated based on your name and registration order
+                  </p>
                 </div>
 
                 {/* Roll Number Section */}
@@ -341,6 +431,9 @@ export default function CompleteProfilePage() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10 rounded-md pointer-events-none opacity-0 transition-opacity duration-300 group-focus-within:opacity-100"></div>
                   </div>
+                  <p className="text-xs text-gray-400">
+                    Roll number must be unique within your university
+                  </p>
                 </div>
 
                 {/* University Section */}

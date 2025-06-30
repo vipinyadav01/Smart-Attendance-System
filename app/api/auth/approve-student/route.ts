@@ -147,21 +147,38 @@ export async function POST(request: NextRequest) {
     let emailSent = false
     let emailError = null
     
+    console.log(`[EMAIL_DEBUG] Attempting to send ${approved ? 'approval' : 'rejection'} email to: ${studentData.email}`)
+    
     if (studentData.email && studentData.name) {
       try {
+        console.log(`[EMAIL_DEBUG] Calling sendApprovalNotification with:`, {
+          email: studentData.email,
+          name: studentData.name,
+          approved
+        })
+        
         const emailResult = await sendApprovalNotification(
           studentData.email, 
           studentData.name, 
           approved
         )
+        
+        console.log(`[EMAIL_DEBUG] Email result:`, emailResult)
+        
         emailSent = emailResult.success
         if (!emailResult.success) {
           emailError = emailResult.message
+          console.error(`[EMAIL_ERROR] Email failed:`, emailError)
+        } else {
+          console.log(`[EMAIL_SUCCESS] Email sent successfully to ${studentData.email}`)
         }
       } catch (error) {
         console.error("Failed to send email notification:", error)
         emailError = error instanceof Error ? error.message : "Unknown email error"
       }
+    } else {
+      emailError = "Missing student email or name"
+      console.error(`[EMAIL_ERROR] ${emailError}:`, { email: studentData.email, name: studentData.name })
     }
 
     // Prepare response
