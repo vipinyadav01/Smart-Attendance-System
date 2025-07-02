@@ -182,6 +182,8 @@ export default function ReportsPage() {
         throw new Error("Authentication required")
       }
 
+      console.log("Exporting report with filters:", filters) // Debug log
+
       const response = await fetch("/api/attendance/export", {
         method: "POST",
         headers: {
@@ -196,12 +198,26 @@ export default function ReportsPage() {
         }),
       })
 
+      console.log("API response status:", response.status) // Debug log
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || "Failed to export report")
+        let errorMessage = "Failed to export report"
+        try {
+          const errorData = await response.json()
+          console.error("API error response:", errorData) // Debug log
+          errorMessage = errorData.error || errorData.details || errorMessage
+          if (errorData.details) {
+            errorMessage += ` (${errorData.details})`
+          }
+        } catch (parseError) {
+          console.error("Failed to parse error response:", parseError)
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`
+        }
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
+      console.log("Export response data:", data) // Debug log
 
       // Create and download the CSV file
       if (data.csvData) {
@@ -209,22 +225,30 @@ export default function ReportsPage() {
         const url = window.URL.createObjectURL(blob)
         const link = document.createElement("a")
         link.href = url
-        link.download = `attendance-report-${filters.classId}-${new Date().toISOString().split("T")[0]}.csv`
+        
+        // Create a more descriptive filename
+        const className = data.className?.replace(/[^a-zA-Z0-9-_]/g, "-") || "unknown-class"
+        const dateStr = new Date().toISOString().split("T")[0]
+        const statusSuffix = filters.status !== "all" ? `-${filters.status}` : ""
+        link.download = `attendance-${className}-${dateStr}${statusSuffix}.csv`
+        
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
         window.URL.revokeObjectURL(url)
-      }
 
-      toast({
-        title: "Success",
-        description: `Report exported successfully (${data.recordCount || reportStats.totalRecords} records)`,
-      })
+        toast({
+          title: "Success",
+          description: `Report exported successfully (${data.recordCount || reportStats.totalRecords} records)`,
+        })
+      } else {
+        throw new Error("No CSV data received from server")
+      }
     } catch (error: any) {
       console.error("Export error:", error)
       toast({
-        title: "Error",
-        description: error.message || "Failed to export report",
+        title: "Export Failed",
+        description: error.message || "Failed to export report. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -244,25 +268,30 @@ export default function ReportsPage() {
   if (!user || loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-gray-800 rounded-full animate-spin border-t-blue-500"></div>
+        <div className="relative">
+          <div className="w-20 h-20 border-4 border-white/20 rounded-full animate-spin border-t-white"></div>
+          <div className="absolute inset-0 w-20 h-20 border-4 border-transparent rounded-full animate-spin border-t-blue-500" style={{ animationDelay: '0.1s' }}></div>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="bg-gray-900/95 backdrop-blur-lg border-b border-gray-800 sticky top-0 z-50">
+      <div className="bg-gradient-to-r from-black via-gray-900 to-black border-b border-gray-800 shadow-2xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">Attendance Reports</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white via-blue-400 to-purple-400 bg-clip-text text-transparent">
+                Attendance Reports
+              </h1>
               <p className="text-sm text-gray-400">Generate and export attendance reports</p>
             </div>
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => router.push("/admin/dashboard")}
-              className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
+              className="bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300"
             >
               Back
             </Button>
@@ -274,7 +303,7 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {/* Filters */}
           <div className="lg:col-span-1">
-            <Card className="bg-gray-900 border-gray-800">
+            <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-2xl">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-white">
                   <Filter className="h-5 w-5 text-blue-400" />
@@ -289,12 +318,12 @@ export default function ReportsPage() {
                     value={filters.classId}
                     onValueChange={(value) => setFilters((prev) => ({ ...prev, classId: value }))}
                   >
-                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                    <SelectTrigger className="bg-white/5 border-white/20 text-white focus:border-blue-500/50 focus:ring-blue-500/20">
                       <SelectValue placeholder="Choose a class" />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
+                    <SelectContent className="bg-gray-900 border-gray-700 backdrop-blur-xl">
                       {classes.map((cls) => (
-                        <SelectItem key={cls.id} value={cls.id} className="text-white hover:bg-gray-700">
+                        <SelectItem key={cls.id} value={cls.id} className="text-white hover:bg-white/10 focus:bg-white/10">
                           <div className="flex flex-col">
                             <span className="font-medium">{cls.name}</span>
                             <span className="text-xs text-gray-400">{cls.code}</span>
@@ -313,7 +342,7 @@ export default function ReportsPage() {
                         <Button
                           variant="outline"
                           className={cn(
-                            "justify-start text-left font-normal bg-gray-800 border-gray-700 text-white hover:bg-gray-700",
+                            "justify-start text-left font-normal bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30 focus:border-blue-500/50 focus:ring-blue-500/20",
                             !filters.startDate && "text-gray-400",
                           )}
                         >
@@ -321,13 +350,13 @@ export default function ReportsPage() {
                           {filters.startDate ? format(filters.startDate, "PPP") : "Start date"}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">
+                      <PopoverContent className="w-auto p-0 bg-gray-900 border-gray-700 backdrop-blur-xl">
                         <Calendar
                           mode="single"
                           selected={filters.startDate}
                           onSelect={(date) => setFilters((prev) => ({ ...prev, startDate: date }))}
                           initialFocus
-                          className="bg-gray-800 text-white"
+                          className="bg-gray-900 text-white rounded-lg"
                         />
                       </PopoverContent>
                     </Popover>
@@ -337,7 +366,7 @@ export default function ReportsPage() {
                         <Button
                           variant="outline"
                           className={cn(
-                            "justify-start text-left font-normal bg-gray-800 border-gray-700 text-white hover:bg-gray-700",
+                            "justify-start text-left font-normal bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30 focus:border-blue-500/50 focus:ring-blue-500/20",
                             !filters.endDate && "text-gray-400",
                           )}
                         >
@@ -345,13 +374,13 @@ export default function ReportsPage() {
                           {filters.endDate ? format(filters.endDate, "PPP") : "End date"}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700">
+                      <PopoverContent className="w-auto p-0 bg-gray-900 border-gray-700 backdrop-blur-xl">
                         <Calendar
                           mode="single"
                           selected={filters.endDate}
                           onSelect={(date) => setFilters((prev) => ({ ...prev, endDate: date }))}
                           initialFocus
-                          className="bg-gray-800 text-white"
+                          className="bg-gray-900 text-white rounded-lg"
                         />
                       </PopoverContent>
                     </Popover>
@@ -364,23 +393,23 @@ export default function ReportsPage() {
                     value={filters.status}
                     onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
                   >
-                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                    <SelectTrigger className="bg-white/5 border-white/20 text-white focus:border-blue-500/50 focus:ring-blue-500/20">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      <SelectItem value="all" className="text-white hover:bg-gray-700">All Status</SelectItem>
-                      <SelectItem value="present" className="text-white hover:bg-gray-700">Present Only</SelectItem>
-                      <SelectItem value="late" className="text-white hover:bg-gray-700">Late Only</SelectItem>
-                      <SelectItem value="absent" className="text-white hover:bg-gray-700">Absent Only</SelectItem>
+                    <SelectContent className="bg-gray-900 border-gray-700 backdrop-blur-xl">
+                      <SelectItem value="all" className="text-white hover:bg-white/10 focus:bg-white/10">All Status</SelectItem>
+                      <SelectItem value="present" className="text-white hover:bg-white/10 focus:bg-white/10">Present Only</SelectItem>
+                      <SelectItem value="late" className="text-white hover:bg-white/10 focus:bg-white/10">Late Only</SelectItem>
+                      <SelectItem value="absent" className="text-white hover:bg-white/10 focus:bg-white/10">Absent Only</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="pt-4 border-t border-gray-700">
+                <div className="pt-4 border-t border-white/10">
                   <Button 
                     onClick={exportReport} 
                     disabled={!filters.classId || exporting} 
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white transition-all duration-300"
                   >
                     {exporting ? (
                       <>
@@ -403,7 +432,7 @@ export default function ReportsPage() {
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <Card className="bg-gray-900 border-gray-800 hover:border-blue-500/30 transition-colors duration-200">
+              <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-2xl hover:bg-white/10 transition-all duration-300">
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -415,7 +444,7 @@ export default function ReportsPage() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gray-900 border-gray-800 hover:border-green-500/30 transition-colors duration-200">
+              <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-2xl hover:bg-white/10 transition-all duration-300">
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -430,7 +459,7 @@ export default function ReportsPage() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gray-900 border-gray-800 hover:border-yellow-500/30 transition-colors duration-200">
+              <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-2xl hover:bg-white/10 transition-all duration-300">
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -445,7 +474,7 @@ export default function ReportsPage() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gray-900 border-gray-800 hover:border-red-500/30 transition-colors duration-200">
+              <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-2xl hover:bg-white/10 transition-all duration-300">
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -462,7 +491,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Report Preview */}
-            <Card className="bg-gray-900 border-gray-800">
+            <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-2xl">
               <CardHeader className="pb-4">
                 <CardTitle className="text-white">Report Preview</CardTitle>
                 <CardDescription className="text-gray-400">
@@ -481,7 +510,7 @@ export default function ReportsPage() {
                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                             <span className="text-sm text-gray-400">Present</span>
                             <div className="flex items-center gap-2">
-                              <div className="w-20 bg-gray-700 rounded-full h-2">
+                              <div className="w-20 bg-white/10 rounded-full h-2">
                                 <div
                                   className="bg-green-500 h-2 rounded-full transition-all duration-300"
                                   style={{
@@ -495,7 +524,7 @@ export default function ReportsPage() {
                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                             <span className="text-sm text-gray-400">Late</span>
                             <div className="flex items-center gap-2">
-                              <div className="w-20 bg-gray-700 rounded-full h-2">
+                              <div className="w-20 bg-white/10 rounded-full h-2">
                                 <div
                                   className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
                                   style={{
@@ -509,7 +538,7 @@ export default function ReportsPage() {
                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                             <span className="text-sm text-gray-400">Absent</span>
                             <div className="flex items-center gap-2">
-                              <div className="w-20 bg-gray-700 rounded-full h-2">
+                              <div className="w-20 bg-white/10 rounded-full h-2">
                                 <div
                                   className="bg-red-500 h-2 rounded-full transition-all duration-300"
                                   style={{
@@ -557,7 +586,7 @@ export default function ReportsPage() {
                     </div>
 
                     {reportStats.totalRecords > 0 && (
-                      <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-lg">
+                      <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-lg backdrop-blur-xl">
                         <h4 className="font-medium text-blue-400 mb-2">Export Information</h4>
                         <p className="text-sm text-gray-300">
                           The CSV export will include student names, roll numbers, dates, times, and attendance status.

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { doc, getDoc, addDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, addDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/app/providers";
 import { QRScanner } from "@/components/qr-scanner";
@@ -19,6 +19,7 @@ export default function ScanPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [scanning, setScanning] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
     message: string;
@@ -30,6 +31,9 @@ export default function ScanPage() {
     longitude: number;
   } | null>(null);
   const [locationError, setLocationError] = useState("");
+  const [lastProcessedQR, setLastProcessedQR] = useState<string>("");
+  const [scanCooldown, setScanCooldown] = useState(false);
+  const processingRef = useRef(false);
 
   useEffect(() => {
     if (!user) {
@@ -74,18 +78,43 @@ export default function ScanPage() {
   };
 
   const handleScan = async (qrDataString: string) => {
-    if (!user || !location) {
+    // Prevent duplicate processing
+    if (processingRef.current || processing || !user || !location) {
+      console.log("Scan ignored - already processing or missing requirements");
+      return;
+    }
+
+    // Check for duplicate QR scan (same QR code scanned recently)
+    if (lastProcessedQR === qrDataString) {
       setResult({
         success: false,
-        message: "User authentication or location is required.",
+        message: "This QR code was already scanned. Please wait before scanning again.",
       });
       return;
     }
 
+    // Check scan cooldown (prevent rapid scanning)
+    if (scanCooldown) {
+      setResult({
+        success: false,
+        message: "Please wait a moment before scanning another QR code.",
+      });
+      return;
+    }
+
+    // Set processing flags
+    processingRef.current = true;
+    setProcessing(true);
     setScanning(true);
     setResult(null);
+    setLastProcessedQR(qrDataString);
+
+    // Set cooldown to prevent rapid scanning
+    setScanCooldown(true);
+    setTimeout(() => setScanCooldown(false), 3000); // 3 second cooldown
 
     try {
+      console.log("Processing QR scan for user:", user.id);
       console.log("Received QR data string:", qrDataString);
       
       const qrData = parseQRData(qrDataString);
@@ -104,6 +133,7 @@ export default function ScanPage() {
         return;
       }
 
+      // Get class information
       const classDoc = await getDoc(doc(db, "classes", qrData.classId));
       if (!classDoc.exists()) {
         setResult({ success: false, message: "Class not found." });
@@ -111,7 +141,6 @@ export default function ScanPage() {
       }
 
       const classData = classDoc.data();
-      console.log("QR data:", qrData);
       console.log("Class data:", classData);
 
       if (!classData.name) {
@@ -124,6 +153,7 @@ export default function ScanPage() {
         return;
       }
 
+      // Verify geofence
       const isInLocation = isWithinGeofence(
         location.latitude,
         location.longitude,
@@ -143,29 +173,89 @@ export default function ScanPage() {
         return;
       }
 
-      const existingAttendance = await getDocs(
-        query(
-          collection(db, "attendance"),
-          where("sessionId", "==", qrData.sessionId),
-          where("studentId", "==", user.id)
-        )
+      // Enhanced duplicate checking - check multiple scenarios
+      console.log("Checking for duplicate attendance...");
+      
+      // Check 1: Existing attendance for this session
+      const sessionAttendanceQuery = query(
+        collection(db, "attendance"),
+        where("sessionId", "==", qrData.sessionId),
+        where("studentId", "==", user.id)
       );
-      console.log("Existing attendance count:", existingAttendance.size);
-
-      if (!existingAttendance.empty) {
-        setResult({ success: false, message: "Attendance has already been marked for this session." });
+      const sessionAttendance = await getDocs(sessionAttendanceQuery);
+      
+      if (!sessionAttendance.empty) {
+        console.log("Found existing session attendance:", sessionAttendance.size);
+        setResult({ 
+          success: false, 
+          message: "Attendance has already been marked for this session." 
+        });
         return;
       }
 
+      // Check 2: Recent attendance for this class (within last 10 minutes to prevent rapid duplicate marking)
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      const recentAttendanceQuery = query(
+        collection(db, "attendance"),
+        where("classId", "==", qrData.classId),
+        where("studentId", "==", user.id),
+        where("timestamp", ">=", tenMinutesAgo)
+      );
+      const recentAttendance = await getDocs(recentAttendanceQuery);
+      
+      if (!recentAttendance.empty) {
+        console.log("Found recent attendance within 10 minutes:", recentAttendance.size);
+        const lastAttendance = recentAttendance.docs[0].data();
+        const lastAttendanceTime = lastAttendance.timestamp?.toDate?.() || new Date(lastAttendance.timestamp);
+        setResult({ 
+          success: false, 
+          message: `Attendance was already marked for this class at ${lastAttendanceTime.toLocaleTimeString()}. Please wait before marking again.` 
+        });
+        return;
+      }
+
+      // Check 3: Daily attendance limit (prevent marking attendance multiple times per day for same class)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const dailyAttendanceQuery = query(
+        collection(db, "attendance"),
+        where("classId", "==", qrData.classId),
+        where("studentId", "==", user.id),
+        where("timestamp", ">=", today),
+        where("timestamp", "<", tomorrow)
+      );
+      const dailyAttendance = await getDocs(dailyAttendanceQuery);
+      
+      if (!dailyAttendance.empty) {
+        console.log("Found existing daily attendance:", dailyAttendance.size);
+        const existingRecord = dailyAttendance.docs[0].data();
+        const existingTime = existingRecord.timestamp?.toDate?.() || new Date(existingRecord.timestamp);
+        setResult({ 
+          success: false, 
+          message: `Attendance already marked today for this class at ${existingTime.toLocaleTimeString()}.` 
+        });
+        return;
+      }
+
+      console.log("All duplicate checks passed, marking attendance...");
+
+      // Calculate attendance status
       const now = new Date();
       const sessionStart = new Date(qrData.timestamp);
       const minutesLate = Math.floor((now.getTime() - sessionStart.getTime()) / 60000);
       const status = minutesLate > 15 ? "late" : "present";
 
+      // Create attendance record with additional validation fields
       const attendanceRecord = {
         sessionId: qrData.sessionId,
         studentId: user.id,
+        studentName: user.name,
+        studentEmail: user.email,
         classId: qrData.classId,
+        className: classData.name,
         timestamp: now,
         status,
         location: {
@@ -173,10 +263,33 @@ export default function ScanPage() {
           longitude: location.longitude,
         },
         scannedAt: now,
+        qrTimestamp: new Date(qrData.timestamp),
+        minutesLate,
+        deviceInfo: {
+          userAgent: navigator.userAgent,
+          timestamp: now.toISOString(),
+        },
+        // Add a composite key for additional uniqueness
+        uniqueKey: `${user.id}_${qrData.sessionId}_${today.toISOString().split('T')[0]}`,
       };
 
-      await addDoc(collection(db, "attendance"), attendanceRecord);
-      await sendAttendanceConfirmation(user.email, user.name, classData.name, now);
+      console.log("Creating attendance record:", attendanceRecord);
+
+      // Use a batch to ensure atomicity
+      const batch = writeBatch(db);
+      const attendanceRef = doc(collection(db, "attendance"));
+      batch.set(attendanceRef, attendanceRecord);
+      await batch.commit();
+
+      console.log("Attendance record saved successfully");
+
+      // Send confirmation email (but don't fail if this fails)
+      try {
+        await sendAttendanceConfirmation(user.email, user.name, classData.name, now);
+      } catch (emailError) {
+        console.error("Email confirmation failed:", emailError);
+        // Don't fail the whole process if email fails
+      }
 
       setResult({
         success: true,
@@ -184,24 +297,37 @@ export default function ScanPage() {
         className: classData.name,
         timestamp: now,
       });
+
+      console.log("Attendance marking completed successfully");
+
     } catch (error: any) {
       console.error("Error processing QR code:", error);
       const errorMessage = error.code?.includes("unavailable")
         ? "Network error. Please check your internet connection and try again."
+        : error.code?.includes("permission-denied")
+        ? "Permission denied. Please contact your administrator."
         : `An error occurred: ${error.message}. Please try again or contact support.`;
       setResult({ success: false, message: errorMessage });
     } finally {
+      processingRef.current = false;
+      setProcessing(false);
       setScanning(false);
     }
   };
 
   const handleScanError = (error: string) => {
-    setResult({ success: false, message: error });
+    if (!processing) {
+      setResult({ success: false, message: error });
+    }
   };
 
   const resetScanner = () => {
     setResult(null);
     setScanning(false);
+    setProcessing(false);
+    setLastProcessedQR("");
+    setScanCooldown(false);
+    processingRef.current = false;
     getCurrentLocation();
   };
 
@@ -259,9 +385,10 @@ export default function ScanPage() {
             <div className="flex flex-col gap-3 pt-2">
               <Button
                 onClick={resetScanner}
-                className="w-full bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-700 hover:to-cyan-700 text-white font-medium h-11"
+                disabled={scanCooldown}
+                className="w-full bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-700 hover:to-cyan-700 text-white font-medium h-11 disabled:opacity-50"
               >
-                Scan Another Code
+                {scanCooldown ? "Please wait..." : "Scan Another Code"}
               </Button>
               <Button
                 onClick={() => router.push("/student/dashboard")}
@@ -279,12 +406,27 @@ export default function ScanPage() {
     if (location) {
       return (
         <div className="relative">
-          <QRScanner onScan={handleScan} onError={handleScanError} isScanning={scanning} />
-          {scanning && (
+          <QRScanner 
+            onScan={handleScan} 
+            onError={handleScanError} 
+            isScanning={scanning || processing}
+            disabled={processing || scanCooldown}
+          />
+          {(scanning || processing) && (
             <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center rounded-xl">
               <div className="text-center space-y-3">
                 <Loader2 className="h-8 w-8 animate-spin text-cyan-400 mx-auto" />
-                <p className="text-white font-medium">Processing scan...</p>
+                <p className="text-white font-medium">
+                  {processing ? "Processing attendance..." : "Processing scan..."}
+                </p>
+              </div>
+            </div>
+          )}
+          {scanCooldown && !processing && (
+            <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-sm flex items-center justify-center rounded-xl">
+              <div className="text-center space-y-2">
+                <Clock className="h-6 w-6 text-yellow-400 mx-auto" />
+                <p className="text-white text-sm">Please wait before scanning again</p>
               </div>
             </div>
           )}
@@ -364,12 +506,17 @@ export default function ScanPage() {
               <p className="text-xs text-slate-500 text-center mt-1">Current Location</p>
             </div>
           )}
-          {!result && location && (
+          {!result && location && !processing && (
             <div className="bg-gradient-to-r from-violet-500/10 via-cyan-500/10 to-emerald-500/10 rounded-xl border border-slate-700/50 p-4 backdrop-blur-sm">
               <div className="text-center space-y-2">
-                <p className="text-sm font-medium text-slate-300">Ready to scan</p>
+                <p className="text-sm font-medium text-slate-300">
+                  {scanCooldown ? "Please wait before scanning again" : "Ready to scan"}
+                </p>
                 <p className="text-xs text-slate-400">
-                  Make sure you're within the classroom location and the QR code is clearly visible
+                  {scanCooldown 
+                    ? "Preventing duplicate scans for your security"
+                    : "Make sure you're within the classroom location and the QR code is clearly visible"
+                  }
                 </p>
               </div>
             </div>

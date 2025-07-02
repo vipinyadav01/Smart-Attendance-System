@@ -1,12 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { adminDb, adminAuth } from "@/lib/firebase-admin"
-import { uploadPDF } from "@/lib/cloudinary"
 import { Timestamp } from "firebase-admin/firestore"
 import type { User } from "@/lib/types"
 
 export async function POST(request: NextRequest) {
   try {
-    const { classId, startDate, endDate } = await request.json()
+    const { classId, startDate, endDate, status } = await request.json()
 
     // Verify admin authentication
     const authHeader = request.headers.get("authorization")
@@ -63,8 +62,8 @@ export async function POST(request: NextRequest) {
         .map((student) => [student.id, student])
     )
 
-    // Prepare CSV data
-    const csvData = attendanceSnapshot.docs.map((doc) => {
+    // Prepare CSV data with status filtering
+    let attendanceRecords = attendanceSnapshot.docs.map((doc) => {
       const data = doc.data()
       const student = studentsMap.get(data.studentId)
 
@@ -93,9 +92,14 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Create CSV content manually (without csv-writer)
+    // Apply status filter if specified
+    if (status && status !== "all") {
+      attendanceRecords = attendanceRecords.filter((record) => record.status === status)
+    }
+
+    // Create CSV content
     const csvHeaders = ["Student Name", "Roll Number", "Email", "Date", "Time", "Status", "Session ID", "Device Info"]
-    const csvRows = csvData.map((row) => [
+    const csvRows = attendanceRecords.map((row) => [
       `"${row.studentName}"`,
       `"${row.rollNumber}"`,
       `"${row.email}"`,
@@ -106,32 +110,25 @@ export async function POST(request: NextRequest) {
       `"${row.deviceInfo}"`,
     ])
 
-    const csvContent = [csvHeaders.join(","), ...csvRows.map((row) => row.join(","))].join("\n")
-
-    // Convert CSV content to buffer
-    const csvBuffer = Buffer.from(csvContent, "utf-8")
-
-    // Upload to Cloudinary
-    const className = classData?.name || "Unknown Class"
-    const safeClassName = className.replace(/[^a-zA-Z0-9-_]/g, "-") // Replace special chars with hyphens
-    const dateStr = new Date().toISOString().split("T")[0]
-    const filename = `attendance-${safeClassName}-${dateStr}`
-    const downloadUrl = await uploadPDF(csvBuffer, filename)
+    const csvData = [csvHeaders.join(","), ...csvRows.map((row) => row.join(","))].join("\n")
 
     return NextResponse.json({
       success: true,
-      downloadUrl,
-      recordCount: csvData.length,
+      csvData,
+      recordCount: attendanceRecords.length,
       className: classData?.name || "Unknown Class",
       dateRange: {
         start: startDate || "All time",
         end: endDate || "All time"
       },
+      statusFilter: status || "all",
       exportedAt: new Date().toISOString(),
-      filename: `${filename}.csv`
     })
   } catch (error) {
     console.error("Error exporting attendance:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ 
+      error: "Internal server error", 
+      details: error instanceof Error ? error.message : "Unknown error" 
+    }, { status: 500 })
   }
 }

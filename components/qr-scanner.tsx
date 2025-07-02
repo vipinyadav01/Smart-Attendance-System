@@ -12,9 +12,10 @@ interface QRScannerProps {
   onScan: (data: string) => void;
   onError: (error: string) => void;
   isScanning?: boolean;
+  disabled?: boolean;
 }
 
-export function QRScanner({ onScan, onError, isScanning = false }: QRScannerProps) {
+export function QRScanner({ onScan, onError, isScanning = false, disabled = false }: QRScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const qrScannerRef = useRef<QrScanner | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -55,13 +56,13 @@ export function QRScanner({ onScan, onError, isScanning = false }: QRScannerProp
 
   const handleVideoReady = useCallback(async () => {
     const video = videoRef.current;
-    if (!video || !isMounted) return;
+    if (!video || !isMounted || disabled) return;
 
     try {
       qrScannerRef.current = new QrScanner(
         video,
         (result) => {
-          if (result && result.data) {
+          if (result && result.data && !disabled) {
             // Pass the raw QR data string to the parent component
             onScan(result.data);
             cleanup();
@@ -90,10 +91,10 @@ export function QRScanner({ onScan, onError, isScanning = false }: QRScannerProp
       setIsInitializing(false);
       setIsActive(false);
     }
-  }, [onScan, onError, cleanup, isMounted]);
+  }, [onScan, onError, cleanup, isMounted, disabled]);
 
   const startCamera = async () => {
-    if (isInitializing || !isMounted) return;
+    if (isInitializing || !isMounted || disabled) return;
 
     try {
       setError("");
@@ -182,14 +183,14 @@ export function QRScanner({ onScan, onError, isScanning = false }: QRScannerProp
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || disabled) return;
 
     try {
       const img = new Image();
       img.src = URL.createObjectURL(file);
       img.onload = async () => {
         const qrData = await scanQRFromImage(img);
-        if (qrData) {
+        if (qrData && !disabled) {
           // Pass the raw QR data string to the parent component
           onScan(qrData);
         } else {
@@ -249,12 +250,17 @@ export function QRScanner({ onScan, onError, isScanning = false }: QRScannerProp
           <Button
             onClick={startCamera}
             className="w-full h-11 bg-blue-600 hover:bg-blue-700"
-            disabled={isInitializing}
+            disabled={isInitializing || disabled}
           >
             {isInitializing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Initializing...
+              </>
+            ) : disabled ? (
+              <>
+                <CameraOff className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                Scanner Disabled
               </>
             ) : (
               <>
@@ -319,6 +325,7 @@ export function QRScanner({ onScan, onError, isScanning = false }: QRScannerProp
               onClick={stopCamera}
               variant="outline"
               className="w-full h-11 border-slate-600 text-slate-300 hover:bg-slate-800"
+              disabled={disabled}
             >
               <CameraOff className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
               Stop Scanning
@@ -335,7 +342,7 @@ export function QRScanner({ onScan, onError, isScanning = false }: QRScannerProp
               </div>
               <Button
                 onClick={startCamera}
-                disabled={isScanning || isInitializing}
+                disabled={isScanning || isInitializing || disabled}
                 className="h-12 px-8 bg-blue-600 hover:bg-blue-700 text-base sm:text-lg disabled:opacity-50"
               >
                 {isInitializing ? (
@@ -348,6 +355,11 @@ export function QRScanner({ onScan, onError, isScanning = false }: QRScannerProp
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     Processing...
                   </>
+                ) : disabled ? (
+                  <>
+                    <CameraOff className="mr-2 h-5 w-5" />
+                    Scanner Disabled
+                  </>
                 ) : (
                   <>
                     <Camera className="mr-2 h-5 w-5" />
@@ -359,7 +371,8 @@ export function QRScanner({ onScan, onError, isScanning = false }: QRScannerProp
                 type="file"
                 accept="image/*"
                 onChange={handleImageUpload}
-                className="mt-4 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-600 file:text-white file:hover:bg-blue-700"
+                disabled={disabled}
+                className="mt-4 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-600 file:text-white file:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed file:disabled:bg-gray-600"
               />
               <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
                 <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
