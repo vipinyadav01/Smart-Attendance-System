@@ -16,6 +16,12 @@ import { db } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
 // Remove validateStudentId import as we're not validating student ID format anymore
 import { Upload, Camera, User, Sparkles, CheckCircle, UserCircle, Hash, School } from "lucide-react"
+import { 
+  studentIdGenerator, 
+  validateRollNumberUniqueness, 
+  generateRollNumberSuggestions,
+  type StudentIdOptions 
+} from "@/lib/student-id-generator"
 
 export default function CompleteProfilePage() {
   const { user, firebaseUser, loading: authLoading, refreshUser } = useAuth()
@@ -30,37 +36,34 @@ export default function CompleteProfilePage() {
   const [useGooglePhoto, setUseGooglePhoto] = useState(true)
 
   // Auto-generate student ID based on name and registration order
-  const generateStudentId = async () => {
+  const generateStudentId = async (strategy: StudentIdOptions['strategy'] = 'hybrid') => {
     if (!user?.name || !user?.university) return
     
     setGeneratingId(true)
     try {
-      // Get count of existing students from same university
-      const studentsQuery = query(
-        collection(db, "users"),
-        where("role", "==", "student"),
-        where("university", "==", user.university),
-        orderBy("createdAt", "asc")
-      )
-      const studentsSnapshot = await getDocs(studentsQuery)
-      const studentCount = studentsSnapshot.size + 1
+      const options: StudentIdOptions = {
+        strategy,
+        university: user.university,
+        studentName: user.name,
+        admissionYear: new Date().getFullYear(),
+        rollNumber: rollNumber || undefined
+      }
       
-      // Generate ID: First 3 letters of name + student number (padded to 3 digits)
-      const namePrefix = user.name
-        .replace(/[^a-zA-Z]/g, '')
-        .toUpperCase()
-        .substring(0, 3)
-        .padEnd(3, 'X')
+      const result = await studentIdGenerator.generateStudentId(options)
       
-      const studentNumber = studentCount.toString().padStart(3, '0')
-      const generatedId = `${namePrefix}${studentNumber}`
-      
-      setStudentId(generatedId)
-      
-      toast({
-        title: "Student ID Generated",
-        description: `Your student ID: ${generatedId}`,
-      })
+      if (result.isUnique) {
+        setStudentId(result.studentId)
+        toast({
+          title: "Student ID Generated",
+          description: `Generated ${result.studentId} using ${result.strategy} strategy`,
+        })
+      } else {
+        toast({
+          title: "Generation Warning",
+          description: `Generated ${result.studentId} but uniqueness not verified`,
+          variant: "destructive",
+        })
+      }
     } catch (error) {
       console.error("Error generating student ID:", error)
       toast({
@@ -71,6 +74,59 @@ export default function CompleteProfilePage() {
     } finally {
       setGeneratingId(false)
     }
+  }
+
+  // Add multiple generation options
+  const generateMultipleOptions = async () => {
+    if (!user?.name || !user?.university) return
+    
+    setGeneratingId(true)
+    try {
+      const options: StudentIdOptions = {
+        strategy: 'name-based', // Will be overridden
+        university: user.university,
+        studentName: user.name,
+        admissionYear: new Date().getFullYear()
+      }
+      
+      const results = await studentIdGenerator.generateMultipleOptions(options)
+      
+      // Show options to user (you could create a modal for this)
+      const uniqueResults = results.filter(r => r.isUnique)
+      if (uniqueResults.length > 0) {
+        setStudentId(uniqueResults[0].studentId) // Use first unique option
+        toast({
+          title: "Multiple Options Generated",
+          description: `Selected: ${uniqueResults[0].studentId} (${uniqueResults[0].strategy})`,
+        })
+      }
+    } catch (error) {
+      console.error("Error generating options:", error)
+    } finally {
+      setGeneratingId(false)
+    }
+  }
+
+  // Enhanced roll number validation
+  const validateRollNumber = async (rollNum: string) => {
+    if (!rollNum.trim() || !university.trim()) return true
+    
+    const validation = await validateRollNumberUniqueness(
+      rollNum, 
+      university, 
+      firebaseUser?.uid
+    )
+    
+    if (!validation.isUnique) {
+      toast({
+        title: "Roll Number Already Exists",
+        description: "This roll number is already registered by another student.",
+        variant: "destructive",
+      })
+      return false
+    }
+    
+    return true
   }
 
   useEffect(() => {
@@ -365,7 +421,7 @@ export default function CompleteProfilePage() {
                   </div>
                 </div>
 
-                {/* Student ID Section */}
+                {/* Enhanced Student ID Section */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -374,66 +430,93 @@ export default function CompleteProfilePage() {
                         Student ID
                       </Label>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={generateStudentId}
-                      disabled={loading || generatingId || !user?.name || !user?.university}
-                      className="border-blue-500 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
-                    >
-                      {generatingId ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="animate-spin rounded-full h-3 w-3 border border-blue-400 border-t-transparent"></div>
-                          <span className="text-xs">Generating...</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs">Generate ID</span>
-                      )}
-                    </Button>
+                    <div className="flex space-x-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => generateStudentId('hybrid')}
+                        disabled={loading || generatingId || !user?.name || !user?.university}
+                        className="border-blue-500 text-blue-400 hover:bg-blue-500/10"
+                      >
+                        Generate Smart ID
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={generateMultipleOptions}
+                        disabled={loading || generatingId || !user?.name || !user?.university}
+                        className="border-purple-500 text-purple-400 hover:bg-purple-500/10"
+                      >
+                        Show Options
+                      </Button>
+                    </div>
                   </div>
+                  
                   <div className="relative group">
                     <Input
                       id="studentId"
                       type="text"
                       value={studentId}
                       onChange={(e) => setStudentId(e.target.value)}
-                      placeholder="Auto-generated or enter manually (e.g., VIP001)"
+                      placeholder="Auto-generated or enter manually"
                       required
                       disabled={loading || generatingId}
-                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-14 text-lg px-4 transition-all duration-300 hover:bg-gray-800/70 group-focus-within:border-blue-500"
+                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-14 text-lg px-4"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10 rounded-md pointer-events-none opacity-0 transition-opacity duration-300 group-focus-within:opacity-100"></div>
                   </div>
-                  <p className="text-xs text-gray-400">
-                    Student ID will be auto-generated based on your name and registration order
-                  </p>
+                  
+                  <div className="text-xs text-gray-400 space-y-1">
+                    <p>• Smart ID: Year + Name + Sequence (e.g., 24JOH01)</p>
+                    <p>• Automatically ensures uniqueness across university</p>
+                    <p>• Click "Show Options" to see different formats</p>
+                  </div>
                 </div>
 
-                {/* Roll Number Section */}
+                {/* Enhanced Roll Number Section with Suggestions */}
                 <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <Hash className="w-5 h-5 text-blue-400" />
-                    <Label htmlFor="rollNumber" className="text-gray-300 text-lg font-semibold">
-                      Roll Number
-                    </Label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <Hash className="w-5 h-5 text-blue-400" />
+                      <Label htmlFor="rollNumber" className="text-gray-300 text-lg font-semibold">
+                        Roll Number
+                      </Label>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const suggestions = generateRollNumberSuggestions(user?.name || '', university)
+                        setRollNumber(suggestions[0] || '')
+                      }}
+                      disabled={loading || !user?.name || !university}
+                      className="border-green-500 text-green-400 hover:bg-green-500/10"
+                    >
+                      Suggest Format
+                    </Button>
                   </div>
+                  
                   <div className="relative group">
                     <Input
                       id="rollNumber"
                       type="text"
                       value={rollNumber}
                       onChange={(e) => setRollNumber(e.target.value)}
-                      placeholder="Enter your roll number (e.g., 220310100001)"
+                      onBlur={() => validateRollNumber(rollNumber)}
+                      placeholder="Enter your unique roll number"
                       required
                       disabled={loading}
-                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-14 text-lg px-4 transition-all duration-300 hover:bg-gray-800/70 group-focus-within:border-blue-500"
+                      className="bg-gray-800/50 border-gray-600 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-14 text-lg px-4"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10 rounded-md pointer-events-none opacity-0 transition-opacity duration-300 group-focus-within:opacity-100"></div>
                   </div>
-                  <p className="text-xs text-gray-400">
-                    Roll number must be unique within your university
-                  </p>
+                  
+                  <div className="text-xs text-gray-400 space-y-1">
+                    <p>• Must be unique within your university</p>
+                    <p>• Format: YYYY + Department + Sequence (e.g., 2024310100001)</p>
+                    <p>• Validated in real-time for uniqueness</p>
+                  </div>
                 </div>
 
                 {/* University Section */}
