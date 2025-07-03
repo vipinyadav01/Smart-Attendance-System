@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { adminDb, adminAuth } from "@/lib/firebase-admin";
-import { generateQRCode, type QRData } from "@/lib/qr-utils";
+import { generateQRCode, type QRData, cleanupExpiredQRCodes, cleanupExpiredSessions } from "@/lib/qr-utils";
 import { generateSessionId } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
@@ -39,6 +39,20 @@ export async function POST(request: NextRequest) {
     console.log("Admin doc:", adminDoc.data());
     if (!adminDoc.exists || adminDoc.data()?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Clean up expired QR codes and sessions before creating new ones
+    console.log("Cleaning up expired QR codes and sessions...");
+    const [qrCleanupResult, sessionCleanupResult] = await Promise.all([
+      cleanupExpiredQRCodes(adminDb),
+      cleanupExpiredSessions(adminDb)
+    ]);
+    
+    if (qrCleanupResult.deletedCount > 0) {
+      console.log(`Cleaned up ${qrCleanupResult.deletedCount} expired QR codes`);
+    }
+    if (sessionCleanupResult.deletedCount > 0) {
+      console.log(`Cleaned up ${sessionCleanupResult.deletedCount} expired sessions`);
     }
 
     // Verify class exists
