@@ -1,5 +1,5 @@
-import { Loading } from "@/components/ui/loading"
-
+// Removed to prevent multiple loading states  
+// Dashboard page handles its own loading
 export default function LoadingPage() {
-  return <Loading variant="page" message="Loading admin dashboard..." />
+  return null
 }

@@ -15,18 +15,40 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!loading && user) {
-      if (!user.isApproved) {
-        router.push("/auth/pending-approval")
-      } else if (user.role === "admin") {
-        router.push("/admin/dashboard")
-      } else {
-        router.push("/student/dashboard")
-      }
+      // Add a small delay to prevent flickering between loading states
+      const redirectTimer = setTimeout(() => {
+        if (!user.isApproved) {
+          router.push("/auth/pending-approval")
+        } else if (user.role === "admin") {
+          router.push("/admin/dashboard")
+        } else {
+          router.push("/student/dashboard")
+        }
+      }, 100) // Small delay to prevent loading flicker
+
+      return () => clearTimeout(redirectTimer)
     }
   }, [user, loading, router])
 
   if (loading) {
-    return <Loading variant="page" message="Loading QRollCall" />
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+        <div className="text-center space-y-6">
+          <div className="relative mx-auto w-16 h-16">
+            <div className="absolute inset-0 border-4 border-slate-700 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-slate-300 font-medium">Loading QRollCall</p>
+            <div className="flex space-x-1 justify-center">
+              <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+              <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (user) {

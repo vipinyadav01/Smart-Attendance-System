@@ -129,7 +129,8 @@ export default function ProfileClient() {
     }
 
     if (!mounted || authLoading) {
-        return <Loading variant="page" message="Loading profile..." />
+        // Return null to avoid showing loading on top of main page loading
+        return null
     }
 
     if (!user) {
