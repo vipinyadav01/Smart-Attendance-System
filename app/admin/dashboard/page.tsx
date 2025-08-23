@@ -45,6 +45,7 @@ import {
   X,
 } from "lucide-react"
 import Link from "next/link"
+import AdminNavbar from "@/components/admin-navbar"
 import { toast } from "@/hooks/use-toast"
 import type { User, AttendanceRecord, Class } from "@/lib/types"
 
@@ -90,7 +91,6 @@ export default function AdminDashboard() {
   const [pendingStudents, setPendingStudents] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     // Don't redirect while auth is still loading
@@ -108,32 +108,6 @@ export default function AdminDashboard() {
 
     fetchDashboardData()
   }, [user, authLoading, router])
-
-  // Close mobile menu on escape key or outside click
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsMobileMenuOpen(false)
-      }
-    }
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (isMobileMenuOpen) {
-        const target = e.target as Element
-        if (!target.closest('[data-mobile-menu]')) {
-          setIsMobileMenuOpen(false)
-        }
-      }
-    }
-
-    document.addEventListener('keydown', handleEscape)
-    document.addEventListener('click', handleClickOutside)
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape)
-      document.removeEventListener('click', handleClickOutside)
-    }
-  }, [isMobileMenuOpen])
 
   const fetchDashboardData = async () => {
     if (!user) return
@@ -401,183 +375,12 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Mobile-First Header */}
-      <div className="bg-gradient-to-r from-black via-gray-900 to-black border-b border-gray-800 shadow-2xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 sm:h-20">
-            {/* Mobile Left - Title */}
-            <div className="flex-1 min-w-0">
-              <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-white via-blue-400 to-purple-400 bg-clip-text text-transparent truncate">
-                Admin Dashboard
-              </h1>
-              <p className="text-xs sm:text-sm text-gray-400 hidden sm:block">
-                <Activity className="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline" />
-                Manage attendance system
-              </p>
-            </div>
-
-            {/* Desktop User Info - Hidden on mobile */}
-            <div className="hidden lg:flex items-center gap-4 bg-white/5 backdrop-blur-xl rounded-2xl px-4 py-3 border border-white/10 shadow-2xl mx-4">
-              <div className="relative">
-                <img
-                  src={user.profilePhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=1f2937&color=ffffff&size=40`}
-                  alt={user.name || 'User'}
-                  className="w-10 h-10 rounded-full ring-2 ring-blue-500/50 shadow-lg object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=1f2937&color=ffffff&size=40`;
-                  }}
-                />
-                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-black shadow-lg animate-pulse"></div>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-medium text-sm">
-                  {user.name || 'User'}
-                </p>
-                <p className="text-xs text-gray-400 truncate max-w-32">
-                  {user.university || user.email}
-                </p>
-              </div>
-            </div>
-
-            {/* Mobile/Tablet Actions */}
-            <div className="flex items-center gap-2">
-              {/* Desktop Actions - Hidden on mobile */}
-              <div className="hidden sm:flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  size="sm"
-                  className="group bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300"
-                >
-                  <RefreshCw className={`h-4 w-4 transition-all duration-500 ${refreshing ? "animate-spin" : "group-hover:rotate-180"}`} />
-                  <span className="hidden lg:inline ml-2">Refresh</span>
-                </Button>
-
-                <Button
-                  asChild
-                  size="sm"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white transition-all duration-300"
-                >
-                  <Link href="/admin/generate-qr">
-                    <QrCode className="h-4 w-4" />
-                    <span className="hidden lg:inline ml-2">Generate QR</span>
-                  </Link>
-                </Button>
-
-                <Button
-                  onClick={handleLogout}
-                  variant="outline"
-                  size="sm"
-                  className="bg-red-600/20 border-red-600/30 text-red-400 hover:bg-red-600/30 hover:border-red-600/50 hover:text-red-300 transition-all duration-300"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span className="hidden lg:inline ml-2">Logout</span>
-                </Button>
-              </div>
-
-              {/* Mobile Menu Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="sm:hidden bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300"
-                data-mobile-menu
-                aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
-              >
-                {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
-            </div>
-          </div>
-
-          {/* Mobile Menu Dropdown */}
-          {isMobileMenuOpen && (
-            <div className="sm:hidden border-t border-gray-800 bg-gray-900/95 backdrop-blur-lg" data-mobile-menu>
-              <div className="p-4 space-y-4">
-                {/* Mobile User Info */}
-                <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
-                  <div className="relative">
-                    <img
-                      src={user.profilePhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=1f2937&color=ffffff&size=40`}
-                      alt={user.name || 'User'}
-                      className="w-10 h-10 rounded-full ring-2 ring-blue-500/50 shadow-lg object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=1f2937&color=ffffff&size=40`;
-                      }}
-                    />
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-black shadow-lg animate-pulse"></div>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white font-medium text-sm">
-                      {user.name || 'User'}
-                    </p>
-                    <p className="text-xs text-gray-400 truncate">
-                      {user.university || user.email}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Mobile Actions */}
-                <div className="space-y-2">
-                  <Button
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                    className="w-full justify-start bg-white/5 border border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300"
-                  >
-                    <RefreshCw className={`mr-3 h-4 w-4 transition-all duration-500 ${refreshing ? "animate-spin" : ""}`} />
-                    Refresh Dashboard
-                  </Button>
-
-                  <Button
-                    asChild
-                    className="w-full justify-start bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white transition-all duration-300"
-                  >
-                    <Link href="/admin/generate-qr" onClick={() => setIsMobileMenuOpen(false)}>
-                      <QrCode className="mr-3 h-4 w-4" />
-                      Generate QR Code
-                    </Link>
-                  </Button>
-
-                  <Button
-                    asChild
-                    className="w-full justify-start bg-white/5 border border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300"
-                  >
-                    <Link href="/admin/students" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Users className="mr-3 h-4 w-4" />
-                      Manage Students
-                      {stats.pendingApprovals > 0 && (
-                        <Badge className="ml-auto bg-red-500/20 text-red-400 border-red-500/30 animate-pulse">
-                          {stats.pendingApprovals}
-                        </Badge>
-                      )}
-                    </Link>
-                  </Button>
-
-                  <Button
-                    asChild
-                    className="w-full justify-start bg-white/5 border border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300"
-                  >
-                    <Link href="/admin/classes" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Calendar className="mr-3 h-4 w-4" />
-                      Manage Classes
-                    </Link>
-                  </Button>
-
-                  <Button
-                    onClick={handleLogout}
-                    className="w-full justify-start bg-red-600/20 border border-red-600/30 text-red-400 hover:bg-red-600/30 hover:border-red-600/50 hover:text-red-300 transition-all duration-300"
-                  >
-                    <LogOut className="mr-3 h-4 w-4" />
-                    Logout
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <AdminNavbar 
+        currentPage="Dashboard"
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
+        pendingApprovals={stats.pendingApprovals}
+      />
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Stats Cards */}

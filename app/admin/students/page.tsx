@@ -28,8 +28,9 @@ import {
   Menu,
   X,
 } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import AdminNavbar from "@/components/admin-navbar"
 import type { User } from "@/lib/types"
+import { Toast } from "@/components/ui/toast"
 
 interface StudentWithStats extends User {
   totalSessions: number
@@ -49,7 +50,6 @@ export default function StudentsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending" | "low-attendance">("all")
   const [selectedStudent, setSelectedStudent] = useState<StudentWithStats | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     if (!user) {
@@ -199,7 +199,7 @@ export default function StudentsPage() {
         ),
       )
 
-      toast({
+      Toast({
         title: "Success",
         description: `Student ${approved ? "approved" : "rejected"} successfully`,
       })
@@ -278,83 +278,12 @@ export default function StudentsPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Mobile-Responsive Header */}
-      <div className="bg-gradient-to-r from-black via-gray-900 to-black border-b border-gray-800 shadow-2xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 sm:h-20">
-            {/* Mobile Left - Title */}
-            <div className="flex-1 min-w-0">
-              <h1 className="text-lg sm:text-2xl lg:text-4xl font-bold bg-gradient-to-r from-white via-blue-400 to-purple-400 bg-clip-text text-transparent truncate">
-                Student Management
-              </h1>
-              <p className="text-xs sm:text-sm text-gray-400 hidden sm:flex items-center gap-2 mt-1">
-                <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
-                Manage student registrations and monitor attendance
-              </p>
-            </div>
-
-            {/* Desktop Actions - Hidden on mobile */}
-            <div className="hidden sm:flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                onClick={handleRefresh} 
-                disabled={refreshing}
-                size="sm"
-                className="group bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300"
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 transition-all duration-500 ${refreshing ? "animate-spin" : "group-hover:rotate-180"}`} />
-                <span className="hidden lg:inline">Refresh</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => router.push("/admin/dashboard")}
-                size="sm"
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 transition-all duration-300"
-              >
-                <span className="hidden lg:inline">Back to Dashboard</span>
-                <span className="lg:hidden">Dashboard</span>
-              </Button>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="sm:hidden bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300"
-            >
-              {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-            </Button>
-          </div>
-
-          {/* Mobile Menu Dropdown */}
-          {isMobileMenuOpen && (
-            <div className="sm:hidden border-t border-gray-800 bg-gray-900/95 backdrop-blur-lg">
-              <div className="p-4 space-y-3">
-                <Button 
-                  variant="outline" 
-                  onClick={handleRefresh} 
-                  disabled={refreshing}
-                  className="w-full bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300"
-                >
-                  <RefreshCw className={`mr-2 h-4 w-4 transition-all duration-500 ${refreshing ? "animate-spin" : ""}`} />
-                  Refresh
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    router.push("/admin/dashboard")
-                    setIsMobileMenuOpen(false)
-                  }}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 transition-all duration-300"
-                >
-                  Back to Dashboard
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <AdminNavbar 
+        currentPage="Students"
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
+        pendingApprovals={pendingStudents.length}
+      />
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Mobile-Responsive Stats Cards */}

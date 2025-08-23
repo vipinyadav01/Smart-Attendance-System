@@ -34,9 +34,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Edit, Trash2, Users, Calendar, Clock, BookOpen, Filter, MoreHorizontal, MapPin } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import AdminNavbar from "@/components/admin-navbar"
 
 const DAYS_OF_WEEK = [
   { value: 0, label: "Sunday" },
@@ -467,12 +473,14 @@ export default function AdminClassesPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
+      <AdminNavbar currentPage="Classes" />
+      
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Class Management</h1>
-            <p className="text-gray-400 text-sm sm:text-base">Manage your classes and schedules</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-white">Manage Classes</h2>
+            <p className="text-gray-400 text-sm">Create and organize your classes and schedules</p>
           </div>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>

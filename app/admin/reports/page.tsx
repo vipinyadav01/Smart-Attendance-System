@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Download, FileText, CalendarIcon, Filter, BarChart3, Users, TrendingUp, Clock } from "lucide-react"
 import { format } from "date-fns"
 import { toast } from "@/hooks/use-toast"
+import AdminNavbar from "@/components/admin-navbar"
 import { cn } from "@/lib/utils"
 
 interface ReportFilters {
@@ -278,26 +279,7 @@ export default function ReportsPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="bg-gradient-to-r from-black via-gray-900 to-black border-b border-gray-800 shadow-2xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white via-blue-400 to-purple-400 bg-clip-text text-transparent">
-                Attendance Reports
-              </h1>
-              <p className="text-sm text-gray-400">Generate and export attendance reports</p>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => router.push("/admin/dashboard")}
-              className="bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300"
-            >
-              Back
-            </Button>
-          </div>
-        </div>
-      </div>
+      <AdminNavbar currentPage="Reports" />
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
