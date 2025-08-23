@@ -1,3 +1,5 @@
-export default function Loading() {
-  return null
+import { Loading } from "@/components/ui/loading"
+
+export default function LoadingPage() {
+  return <Loading variant="page" message="Loading profile..." />
 }

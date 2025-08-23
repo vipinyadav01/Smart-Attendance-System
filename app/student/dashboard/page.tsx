@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Loading } from "@/components/ui/loading"
 import { useToast } from "@/hooks/use-toast"
 import {
   Calendar,
@@ -196,26 +197,17 @@ export default function StudentDashboard() {
     }))
   }
 
+  // Show loading only for data fetching, not auth loading
+  if (authLoading) {
+    return null // Let Next.js loading.tsx handle this
+  }
+
+  if (!user) {
+    return null // Will redirect to signin
+  }
+
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <div className="max-w-md w-full">
-          <div className="animate-pulse space-y-6">
-            <div className="h-32 sm:h-40 bg-gradient-to-r from-violet-900/30 to-cyan-900/30 rounded-2xl"></div>
-            <div className="grid grid-cols-2 gap-3">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-20 bg-slate-800/50 rounded-xl"></div>
-              ))}
-            </div>
-            <div className="space-y-3">
-              {[...Array(2)].map((_, i) => (
-                <div key={i} className="h-32 bg-slate-800/50 rounded-xl"></div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+    return <Loading variant="page" message="Loading dashboard..." />
   }
 
   const stats = getStats()

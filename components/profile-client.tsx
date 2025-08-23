@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { User, Mail, School, Calendar, CheckCircle, Clock, Shield, Database, Eye, RefreshCw } from "lucide-react"
+import { Loading } from "@/components/ui/loading"
 import { useRouter } from "next/navigation"
 
 interface UserProfile {
@@ -127,14 +128,16 @@ export default function ProfileClient() {
         })
     }
 
-    if (!mounted || !user || loading) {
-        return (
-            <div className="min-h-screen bg-black flex items-center justify-center">
-                <div className="relative">
-                    <div className="w-16 h-16 border-4 border-gray-800 rounded-full animate-spin border-t-blue-500"></div>
-                </div>
-            </div>
-        )
+    if (!mounted || authLoading) {
+        return <Loading variant="page" message="Loading profile..." />
+    }
+
+    if (!user) {
+        return null // Will redirect to signin
+    }
+
+    if (loading) {
+        return <Loading variant="page" message="Fetching profile data..." />
     }
 
     if (error) {

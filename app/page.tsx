@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "./providers"
+import { Loading } from "@/components/ui/loading"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { QrCode, Users, Shield, MapPin, Mail, CheckCircle, Smartphone, BarChart3, Sparkles, Zap, Star } from "lucide-react"
@@ -25,25 +26,7 @@ export default function HomePage() {
   }, [user, loading, router])
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <div className="text-center space-y-6">
-          <div className="relative mx-auto w-20 h-20">
-            <div className="absolute inset-0 gradient-cyber rounded-full blur-xl animate-pulse"></div>
-            <div className="relative loading-spinner mx-auto"></div>
-            <div className="absolute inset-0 border-2 border-cyan-400/30 rounded-full animate-pulse-ring"></div>
-          </div>
-          <div className="space-y-2">
-            <p className="text-slate-300 font-medium">Loading QRollCall</p>
-            <div className="loading-dots text-cyan-400">
-              <div></div>
-              <div></div>
-              <div></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+    return <Loading variant="page" message="Loading QRollCall" />
   }
 
   if (user) {
